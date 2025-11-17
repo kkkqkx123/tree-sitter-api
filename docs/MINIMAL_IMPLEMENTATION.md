@@ -155,27 +155,6 @@ export const parseCode = async (req, res) => {
 - 更简单的错误追踪
 - 更好的TypeScript支持
 
-## 迁移步骤
-
-1. **移除WASM相关代码**：
-   - 删除 `src/buildWasm.ts`
-   - 删除 `src/compileWasm.ts`
-   - 修改 `src/treeSitter.ts`
-
-2. **更新依赖**：
-   ```bash
-   npm uninstall web-tree-sitter
-   npm install tree-sitter tree-sitter-javascript tree-sitter-python
-   ```
-
-3. **重构服务层**：
-   - 实现新的TreeSitterService
-   - 更新控制器使用新服务
-
-4. **测试验证**：
-   - 确保功能完整性
-   - 性能测试对比
-
 ## 注意事项
 
 ### 版本兼容性
