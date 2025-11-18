@@ -13,7 +13,7 @@ import { ErrorHandler } from '@/errors/ErrorHandler';
 import { RecoveryStrategy } from '@/errors/RecoveryStrategy';
 import { globalErrorHandler } from '@/middleware/globalErrorHandler';
 import { resourceGuard } from '@/middleware/resourceGuard';
-import { log } from '@/utils/Logger';
+import { log, logger } from '@/utils/Logger';
 
 // 导入路由
 import parseRoutes from '@/routes/parse';
@@ -28,6 +28,7 @@ class TreeSitterServer {
   private errorHandler: ErrorHandler;
   private recoveryStrategy: RecoveryStrategy;
   private server: any;
+  private healthCheckInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     this.app = express();
@@ -179,6 +180,20 @@ class TreeSitterServer {
       log.info('Server', `Tree-sitter API server running on ${host}:${port}`);
       log.info('Server', `Environment: ${ServerConfig.SERVER.ENVIRONMENT}`);
       log.info('Server', `API prefix: ${ServerConfig.API.PREFIX}`);
+      
+      // 在应用完全启动后初始化文件日志
+      setTimeout(() => {
+        logger.initializeFileWriter();
+        
+        // 启动长时间间隔检查机制
+        this.startPeriodicChecks();
+        
+        // 记录日志文件路径
+        const logFilePath = logger.getLogFilePath();
+        if (logFilePath) {
+          log.info('Server', `Log file: ${logFilePath}`);
+        }
+      }, 1000); // 延迟1秒确保应用完全启动
     });
 
     // 设置服务器超时
@@ -189,11 +204,62 @@ class TreeSitterServer {
   }
 
   /**
+   * 启动定期检查机制
+   */
+  private startPeriodicChecks(): void {
+    // 立即执行一次检查
+    this.performHealthCheck();
+    
+    // 每小时执行一次检查
+    this.healthCheckInterval = setInterval(() => {
+      this.performHealthCheck();
+    }, 60 * 60 * 1000); // 1小时
+    
+    // 防止计时器阻止进程退出
+    if (this.healthCheckInterval) {
+      this.healthCheckInterval.unref();
+    }
+  }
+
+  /**
+   * 执行健康检查
+   */
+  private performHealthCheck(): void {
+    try {
+      const memory = process.memoryUsage();
+      const memoryUsageMB = Math.round(memory.heapUsed / 1024 / 1024);
+      
+      log.info('HealthCheck', `Memory usage: ${memoryUsageMB}MB`);
+      
+      // 检查日志系统状态
+      if (logger.isFileLoggingInitialized()) {
+        const logFilePath = logger.getLogFilePath();
+        log.info('HealthCheck', `File logging active: ${logFilePath}`);
+      } else {
+        log.warn('HealthCheck', 'File logging not initialized');
+      }
+      
+      // 检查内存使用情况
+      const maxMemoryMB = parseInt(process.env['MAX_MEMORY_MB'] || '512', 10);
+      if (memoryUsageMB > maxMemoryMB * 0.8) {
+        log.warn('HealthCheck', `High memory usage: ${memoryUsageMB}MB/${maxMemoryMB}MB`);
+      }
+    } catch (error) {
+      log.error('HealthCheck', `Health check failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
    * 设置优雅关闭
    */
   private setupGracefulShutdown(): void {
     const shutdown = (signal: string): void => {
       log.info('Server', `Received ${signal}, shutting down gracefully`);
+
+      // 停止定期检查
+      if (this.healthCheckInterval) {
+        clearInterval(this.healthCheckInterval);
+      }
 
       this.server.close((err: Error | null) => {
         if (err) {
@@ -243,6 +309,9 @@ class TreeSitterServer {
    */
   private async cleanup(): Promise<void> {
     try {
+      // 关闭日志系统
+      await logger.shutdown();
+
       // 销毁Tree-sitter服务
       this.service.destroy();
 

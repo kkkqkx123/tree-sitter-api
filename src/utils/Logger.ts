@@ -1,7 +1,11 @@
 /**
- * 简化的日志模块
- * 解决现有console日志的核心缺陷：无级别控制、无统一格式
+ * 增强的日志模块
+ * 支持console和文件输出、日志轮转
  */
+
+import { FileWriter } from './FileWriter';
+import { LogRotator } from './LogRotator';
+import { LoggerConfig, getLoggerConfig } from '@/config/logging';
 
 export enum LogLevel {
   DEBUG = 0,
@@ -13,14 +17,56 @@ export enum LogLevel {
 
 export class Logger {
   private static instance: Logger;
+  private config: LoggerConfig;
+  private fileWriter: FileWriter | null = null;
+  private logRotator: LogRotator | null = null;
+  private currentFileSize: number = 0;
+  private isInitialized: boolean = false;
 
-  private constructor() {}
+  private constructor(config?: LoggerConfig) {
+    this.config = config || getLoggerConfig();
+  }
 
-  static getInstance(): Logger {
+  static getInstance(config?: LoggerConfig): Logger {
     if (!Logger.instance) {
-      Logger.instance = new Logger();
+      Logger.instance = new Logger(config);
     }
     return Logger.instance;
+  }
+
+  /**
+   * 延迟初始化文件写入器（在应用完全启动后调用）
+   */
+  public initializeFileWriter(): void {
+    if (this.isInitialized || !this.config.file.enabled) {
+      return;
+    }
+
+    try {
+      this.fileWriter = new FileWriter({
+        directory: this.config.file.directory,
+        filename: this.config.file.filename,
+        bufferSize: this.config.performance.bufferSize,
+        flushInterval: this.config.performance.flushInterval,
+      });
+
+      this.logRotator = new LogRotator(
+        this.config.file.directory,
+        this.config.file.filename,
+        this.config.rotation
+      );
+
+      this.currentFileSize = this.fileWriter.getFileSize();
+      this.isInitialized = true;
+      
+      // 记录日志系统初始化完成
+      this.info('Logger', `File logging initialized: ${this.fileWriter.getFilepath()}`);
+    } catch (error) {
+      console.error('Failed to initialize file logger:', error);
+      this.fileWriter = null;
+      this.logRotator = null;
+      this.isInitialized = false;
+    }
   }
 
   private parseLogLevel(level: string): LogLevel {
@@ -41,79 +87,160 @@ export class Logger {
   }
 
   private getCurrentLevel(): LogLevel {
-    return this.parseLogLevel(process.env['LOG_LEVEL'] || 'info');
-  }
-
-  private isTimestampEnabled(): boolean {
-    return process.env['ENABLE_LOG_TIMESTAMP'] !== 'false';
-  }
-
-  private isModuleEnabled(): boolean {
-    return process.env['ENABLE_LOG_MODULE'] !== 'false';
+    return this.parseLogLevel(this.config.level);
   }
 
   private shouldLog(level: LogLevel): boolean {
     return level >= this.getCurrentLevel();
   }
 
+  /**
+   * 格式化日志消息
+   */
   private formatMessage(
     level: string,
     module: string,
-    message: string,
+    message: string
   ): string {
     const parts: string[] = [];
 
-    if (this.isTimestampEnabled()) {
-      parts.push(`[${new Date().toISOString()}]`);
+    // 时间戳
+    if (this.config.timestamps.enabled) {
+      const timestamp = new Date().toISOString();
+      parts.push(`[${timestamp}]`);
     }
 
+    // 日志级别
     parts.push(`[${level}]`);
 
-    if (this.isModuleEnabled() && module) {
+    // 模块名
+    if (this.config.module.enabled && module) {
       parts.push(`[${module}]`);
     }
 
+    // 消息
     parts.push(message);
 
     return parts.join(' ');
   }
 
-  debug(module: string, message: string, ...args: any[]): void {
-    if (this.shouldLog(LogLevel.DEBUG)) {
-      console.debug(this.formatMessage('DEBUG', module, message), ...args);
+  /**
+   * 执行日志写入
+   */
+  private performLog(
+    level: string,
+    module: string,
+    message: string,
+    logFn: (msg: string, ...args: any[]) => void,
+    args: any[]
+  ): void {
+    if (!this.shouldLog(this.parseLogLevel(level))) {
+      return;
     }
+
+    const formatted = this.formatMessage(level, module, message);
+
+    // 输出到console
+    if (this.config.console.enabled) {
+      logFn(formatted, ...args);
+    }
+
+    // 输出到文件
+    if (this.fileWriter && this.isInitialized) {
+      this.writeToFile(formatted);
+    }
+  }
+
+  /**
+   * 写入文件并检查轮转
+   */
+  private writeToFile(message: string): void {
+    if (!this.fileWriter || !this.logRotator || !this.isInitialized) {
+      return;
+    }
+
+    const messageLength = message.length + 1; // +1 for newline
+    this.currentFileSize += messageLength;
+
+    // 检查是否需要轮转
+    if (this.logRotator.shouldRotate(this.currentFileSize)) {
+      this.logRotator
+        .rotate(this.fileWriter.getFilepath())
+        .then(() => {
+          // 轮转后重置大小和创建新的FileWriter
+          this.currentFileSize = 0;
+          this.fileWriter = new FileWriter({
+            directory: this.config.file.directory,
+            filename: this.config.file.filename,
+            bufferSize: this.config.performance.bufferSize,
+            flushInterval: this.config.performance.flushInterval,
+          });
+          this.fileWriter.write(message);
+        })
+        .catch((err) => {
+          console.error('Failed to rotate logs:', err);
+        });
+    } else {
+      this.fileWriter.write(message);
+    }
+  }
+
+  // 公共日志方法
+  debug(module: string, message: string, ...args: any[]): void {
+    this.performLog('DEBUG', module, message, console.debug, args);
   }
 
   info(module: string, message: string, ...args: any[]): void {
-    if (this.shouldLog(LogLevel.INFO)) {
-      console.log(this.formatMessage('INFO', module, message), ...args);
-    }
+    this.performLog('INFO', module, message, console.log, args);
   }
 
   warn(module: string, message: string, ...args: any[]): void {
-    if (this.shouldLog(LogLevel.WARN)) {
-      console.warn(this.formatMessage('WARN', module, message), ...args);
-    }
+    this.performLog('WARN', module, message, console.warn, args);
   }
 
   error(module: string, message: string, ...args: any[]): void {
-    if (this.shouldLog(LogLevel.ERROR)) {
-      console.error(this.formatMessage('ERROR', module, message), ...args);
-    }
+    this.performLog('ERROR', module, message, console.error, args);
   }
 
   fatal(module: string, message: string, ...args: any[]): void {
-    if (this.shouldLog(LogLevel.FATAL)) {
-      console.error(this.formatMessage('FATAL', module, message), ...args);
-    }
+    this.performLog('FATAL', module, message, console.error, args);
   }
 
-  // 兼容性方法：保持与console.log相同的接口
   log(module: string, message: string, ...args: any[]): void {
     this.info(module, message, ...args);
   }
 
-  // 测试辅助方法
+  /**
+   * 获取日志配置
+   */
+  getConfig(): LoggerConfig {
+    return this.config;
+  }
+
+  /**
+   * 获取日志文件路径
+   */
+  getLogFilePath(): string | null {
+    return this.fileWriter?.getFilepath() || null;
+  }
+
+  /**
+   * 检查文件日志是否已初始化
+   */
+  isFileLoggingInitialized(): boolean {
+    return this.isInitialized;
+  }
+
+  /**
+   * 关闭logger（应用关闭时调用）
+   */
+  async shutdown(): Promise<void> {
+    if (this.fileWriter) {
+      await this.fileWriter.close();
+    }
+  }
+
+  // 测试辅助
   _shouldLog(level: LogLevel): boolean {
     return this.shouldLog(level);
   }
@@ -122,7 +249,7 @@ export class Logger {
 // 全局实例
 export const logger = Logger.getInstance();
 
-// 便捷的导出对象，保持简洁的调用方式
+// 便捷导出
 export const log = {
   debug: (module: string, message: string, ...args: any[]) =>
     logger.debug(module, message, ...args),
