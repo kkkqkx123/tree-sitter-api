@@ -5,15 +5,6 @@
 // 设置测试超时时间
 jest.setTimeout(10000);
 
-// 模拟console方法以避免测试输出污染
-global.console = {
-  ...console,
-  // 保留error和warn用于调试
-  log: jest.fn(),
-  debug: jest.fn(),
-  info: jest.fn(),
-};
-
 // 设置测试环境变量
 process.env['NODE_ENV'] = 'test';
 process.env['LOG_LEVEL'] = 'error';

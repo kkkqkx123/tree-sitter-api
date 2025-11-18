@@ -15,13 +15,13 @@ npm run build
 npm start
 ```
 
-服务器默认在 `http://localhost:3000` 启动。
+服务器默认在 `http://localhost:4001` 启动。
 
 ### 基本请求示例
 
 ```bash
 # 解析JavaScript代码
-curl -X POST http://localhost:3000/api/parse \
+curl -X POST http://localhost:4001/api/parse \
   -H "Content-Type: application/json" \
   -d '{
     "language": "javascript",
@@ -30,10 +30,10 @@ curl -X POST http://localhost:3000/api/parse \
   }'
 
 # 获取健康状态
-curl http://localhost:3000/api/health
+curl http://localhost:4001/api/health
 
 # 获取支持的语言列表
-curl http://localhost:3000/api/languages
+curl http://localhost:4001/api/languages
 ```
 
 ## API 端点

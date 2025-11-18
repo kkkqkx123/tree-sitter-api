@@ -112,9 +112,8 @@ describe('TreeSitterService', () => {
 
   describe('错误处理', () => {
     test('应该正确处理缺少必需字段的请求', async () => {
-      const request = {
+      const request: any = {
         language: 'javascript' as SupportedLanguage,
-        code: '', // 添加缺失的code字段
         // 缺少 code 字段
         query: '(function_declaration) @func',
       };

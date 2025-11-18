@@ -130,51 +130,6 @@ tree-sitter-api/
 - `MAX_CODE_LENGTH` - 最大代码长度 (默认: 100KB)
 - `QUERY_TIMEOUT` - 查询超时时间 (默认: 30秒)
 
-## 实现状态
-
-### ✅ 已完成 (第一阶段)
-
-- [x] 项目初始化和配置
-- [x] TypeScript和构建工具配置
-- [x] 核心类型定义
-- [x] 基础配置文件
-- [x] 测试环境设置
-
-### ✅ 已完成 (第二阶段)
-
-- [x] 语言管理器 (LanguageManager)
-  - [x] 支持的语言列表定义
-  - [x] 懒加载语言模块机制
-  - [x] 语言模块缓存管理
-- [x] 轻量级解析器池 (LightweightParserPool)
-  - [x] 解析器实例管理
-  - [x] 资源释放机制
-  - [x] 池大小限制
-- [x] 内存监控器 (MemoryMonitor)
-  - [x] 内存使用监控
-  - [x] 内存趋势分析
-  - [x] 清理触发机制
-- [x] 资源清理器 (ResourceCleaner)
-  - [x] 分层清理策略
-  - [x] 垃圾回收机制
-  - [x] 紧急清理流程
-- [x] 核心Tree-sitter服务 (TreeSitterService)
-  - [x] 请求处理流程
-  - [x] 查询执行引擎
-  - [x] 资源生命周期管理
-
-### 🚧 进行中 (第三阶段)
-
-- [ ] 错误处理系统
-- [ ] API服务器实现
-- [ ] 测试和优化
-
-### 📋 计划中
-
-- [ ] 部署和监控
-- [ ] 性能优化
-- [ ] 扩展功能
-
 ## 核心组件
 
 ### LanguageManager
@@ -202,33 +157,11 @@ tree-sitter-api/
 - 完整的资源生命周期管理
 - 健康检查和性能监控
 
-## 测试
-
-项目包含完整的测试套件：
-
-- **单元测试**：测试各个核心组件的功能
-- **集成测试**：测试组件间的协作
-- **性能测试**：验证内存使用和响应时间
-
-运行测试：
-
-```bash
-# 运行所有测试
-npm test
-
-# 运行测试并生成覆盖率报告
-npm run test:coverage
-
-# 监视模式运行测试
-npm run test:watch
-```
-
 ## 文档
 
-- [架构设计](docs/NEW_ARCHITECTURE.md)
+- [架构设计](docs/ARCHITECTURE.md)
 - [API规范](docs/API_SPECIFICATION.md)
-- [内存管理](docs/NEW_MEMORY_MANAGEMENT.md)
-- [实现路线图](docs/IMPLEMENTATION_ROADMAP.md)
+- [内存管理](docs/MEMORY_MANAGEMENT.md)
 
 ## 性能特点
 
@@ -238,5 +171,4 @@ npm run test:watch
 - **资源管理**：自动清理和垃圾回收，防止内存泄漏
 
 ## 许可证
-
 MIT

@@ -13,6 +13,9 @@ import { EnvConfig } from '@/config/env';
 import { CleanupStrategy } from '@/config/memory';
 import { log } from '@/utils/Logger';
 
+// 导入Tree-sitter Query类
+const Query = require('tree-sitter').Query;
+
 export class TreeSitterService {
   private languageManager: LanguageManager;
   private parserPool: LightweightParserPool;
@@ -74,7 +77,7 @@ export class TreeSitterService {
    * 验证请求
    */
   private validateRequest(request: ParseRequest): void {
-    if (!request.language || !request.code) {
+    if (!request.language || request.code === undefined || request.code === null) {
       throw new TreeSitterError(
         ErrorType.VALIDATION_ERROR,
         ErrorSeverity.MEDIUM,
@@ -114,6 +117,12 @@ export class TreeSitterService {
   private async executeRequest(request: ParseRequest): Promise<ParseResult> {
     const { language, code, query, queries = [] } = request;
 
+    // 特殊处理空代码情况
+    if (code === '') {
+      // 对于空代码，直接返回空匹配结果而不进行解析
+      return { success: true, matches: [], errors: [] };
+    }
+
     let parser: any | null = null;
     let tree: TreeSitterTree | null = null;
 
@@ -129,18 +138,34 @@ export class TreeSitterService {
       tree = parser.parse(code) as any as TreeSitterTree;
       this.activeTrees.add(tree);
 
-      // 验证解析结果
-      if (!tree || !tree.rootNode) {
+      // 验证解析结果 - 检查tree是否有效
+      if (!tree) {
         throw new TreeSitterError(
           ErrorType.PARSE_ERROR,
           ErrorSeverity.MEDIUM,
           'Failed to parse code: invalid tree structure'
         );
       }
+      
+      // 检查根节点是否存在
+      if (!tree.rootNode) {
+        log.warn('TreeSitterService', 'Parsed tree has no root node');
+        return { success: true, matches: [], errors: [] };
+      }
+      
+      log.info('TreeSitterService', `Parsed tree with type: ${tree.rootNode.type}, childCount: ${tree.rootNode.childCount}`);
 
       // 执行查询
       const allQueries = query ? [query, ...queries] : queries;
-      const matches = await this.executeQueries(tree, allQueries);
+      
+      // 如果没有查询，直接返回空结果
+      if (allQueries.length === 0) {
+        return { success: true, matches: [], errors: [] };
+      }
+      
+      log.info('TreeSitterService', `Executing ${allQueries.length} queries: ${allQueries.join(', ')}`);
+      const matches = await this.executeQueries(tree, allQueries, languageModule);
+      log.info('TreeSitterService', `Found ${matches.length} matches`);
 
       return { success: true, matches, errors: [] };
 
@@ -159,32 +184,64 @@ export class TreeSitterService {
   /**
    * 执行查询
    */
-  private async executeQueries(tree: TreeSitterTree, queries: string[]): Promise<MatchResult[]> {
+  private async executeQueries(tree: TreeSitterTree, queries: string[], languageModule: any): Promise<MatchResult[]> {
     const matches: MatchResult[] = [];
 
     for (const queryString of queries) {
       try {
-        const query = tree.getLanguage().query(queryString) as TreeSitterQuery;
+        // 使用正确的方式创建查询
+        const query = new Query(languageModule, queryString) as TreeSitterQuery;
+        if (!query) {
+          log.warn('TreeSitterService', `Failed to create query for: ${queryString}`);
+          continue;
+        }
+        
         this.activeQueries.add(query);
 
         try {
+          // 确保rootNode存在
+          if (!tree.rootNode) {
+            log.warn('TreeSitterService', 'Root node is null or undefined');
+            continue;
+          }
+          
           const queryMatches = query.matches(tree.rootNode);
+          
+          // 检查匹配结果
+          if (!queryMatches || !Array.isArray(queryMatches)) {
+            log.warn('TreeSitterService', `Query returned invalid matches: ${queryMatches}`);
+            continue;
+          }
 
-          const queryResults = queryMatches.flatMap(match =>
-            match.captures.map(capture => ({
-              captureName: capture.name,
-              type: capture.node.type,
-              text: capture.node.text,
-              startPosition: {
-                row: capture.node.startPosition.row,
-                column: capture.node.startPosition.column,
-              },
-              endPosition: {
-                row: capture.node.endPosition.row,
-                column: capture.node.endPosition.column,
-              },
-            }))
-          );
+          const queryResults = queryMatches.flatMap(match => {
+            if (!match || !match.captures || !Array.isArray(match.captures)) {
+              return [];
+            }
+            
+            return match.captures
+              .filter((capture: any) => capture && capture.name && capture.node)
+              .map((capture: any) => {
+                if (!capture || !capture.name || !capture.node) {
+                  log.warn('TreeSitterService', 'Invalid capture object');
+                  return null;
+                }
+                
+                return {
+                  captureName: capture.name,
+                  type: capture.node.type,
+                  text: capture.node.text,
+                  startPosition: {
+                    row: capture.node.startPosition.row,
+                    column: capture.node.startPosition.column,
+                  },
+                  endPosition: {
+                    row: capture.node.endPosition.row,
+                    column: capture.node.endPosition.column,
+                  },
+                };
+              })
+              .filter((item: any): item is MatchResult => item !== null);
+          });
 
           matches.push(...queryResults);
         } finally {
