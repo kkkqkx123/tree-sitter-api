@@ -1,0 +1,57 @@
+version: '3.9'
+
+services:
+  tree-sitter-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tree-sitter-api
+    ports:
+      - "4001:4001"
+    environment:
+      - NODE_ENV=production
+      - PORT=4001
+      - HOST=0.0.0.0
+      - MAX_MEMORY_MB=512
+      - MEMORY_WARNING_THRESHOLD=300
+      - MEMORY_CRITICAL_THRESHOLD=450
+      - REQUEST_TIMEOUT=30000
+      - MAX_REQUEST_SIZE=5mb
+      - MAX_CONCURRENT_REQUESTS=10
+      - LOG_LEVEL=info
+      - ENABLE_LOG_TIMESTAMP=true
+      - ENABLE_LOG_MODULE=true
+      - ENABLE_RATE_LIMITING=true
+      - CORS_ORIGIN=*
+      - PARSER_POOL_SIZE=3
+      - MAX_CODE_LENGTH=102400
+      - QUERY_TIMEOUT=30000
+      - ENABLE_REQUEST_LOGGING=true
+      - ENABLE_HEALTH_CHECK=true
+      - HEALTH_CHECK_INTERVAL=30000
+      - API_PREFIX=/api
+      - ENABLE_HELMET=true
+      - TRUST_PROXY=false
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4001/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    # Memory and CPU limits (adjust as needed)
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '1'
+          memory: 512M
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=tree-sitter-api"
