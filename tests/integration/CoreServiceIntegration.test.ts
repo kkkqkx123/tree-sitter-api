@@ -65,7 +65,7 @@ describe('核心服务集成测试', () => {
       
       expect(result.success).toBe(true);
       expect(result.matches.length).toBeGreaterThan(0);
-      expect(result.matches[0].type).toBe(expectedType);
+      expect(result.matches[0]?.type).toBe(expectedType);
     });
   });
 
@@ -80,7 +80,7 @@ describe('核心服务集成测试', () => {
       const promises = requests.map(request => service.processRequest(request));
       const results = await Promise.all(promises);
 
-      results.forEach((result, index) => {
+      results.forEach((result: any, index: number) => {
         expect(result.success).toBe(true);
         expect(result.matches.length).toBeGreaterThan(0);
         expect(result.matches[0].text).toContain(`test${index}`);

@@ -22,6 +22,12 @@ export interface ParseRequest {
   queries?: string[];
 }
 
+export interface ParseResult {
+  success: boolean;
+  matches: MatchResult[];
+  errors: string[];
+}
+
 export interface ParseResponse {
   matches: MatchResult[];
 }

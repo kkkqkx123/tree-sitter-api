@@ -2,28 +2,18 @@
  * 轻量级解析器池 - 针对小规模使用场景优化的解析器池管理
  */
 
-import * as Parser from 'tree-sitter';
+import Parser from 'tree-sitter';
 import { SupportedLanguage } from '@/types/treeSitter';
-import { TreeSitterError, ErrorType, ErrorSeverity } from '@/types/errors';
 import { EnvConfig } from '@/config/env';
-
-interface PooledParser {
-  parser: Parser;
-  language: SupportedLanguage | null;
-  lastUsed: number;
-  useCount: number;
-}
 
 export class LightweightParserPool {
   private pools: Map<SupportedLanguage, Parser[]> = new Map();
   private activeParsers: Set<Parser> = new Set();
   private maxPoolSize: number;
-  private parserTimeout: number;
   private cleanupInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     this.maxPoolSize = EnvConfig.PARSER_POOL_SIZE;
-    this.parserTimeout = 300000; // 5分钟超时
     this.startCleanupTimer();
   }
 
@@ -33,7 +23,7 @@ export class LightweightParserPool {
   getParser(language: SupportedLanguage): Parser {
     // 尝试从池中获取
     const languagePool = this.pools.get(language) || [];
-    
+
     if (languagePool.length > 0) {
       const parser = languagePool.pop()!;
       this.pools.set(language, languagePool);
@@ -95,7 +85,7 @@ export class LightweightParserPool {
    */
   cleanupLanguagePool(language: SupportedLanguage): void {
     const languagePool = this.pools.get(language) || [];
-    
+
     languagePool.forEach(parser => this.destroyParser(parser));
     this.pools.delete(language);
   }
@@ -105,7 +95,7 @@ export class LightweightParserPool {
    */
   cleanup(): void {
     // 清理所有池中的解析器
-    this.pools.forEach((parsers, language) => {
+    this.pools.forEach((parsers, _language) => {
       parsers.forEach(parser => this.destroyParser(parser));
     });
     this.pools.clear();
@@ -155,7 +145,7 @@ export class LightweightParserPool {
    */
   isHealthy(): boolean {
     const stats = this.getPoolStats();
-    
+
     // 检查活跃解析器数量是否合理
     if (stats.totalActive > this.maxPoolSize * 2) {
       return false;
@@ -192,8 +182,7 @@ export class LightweightParserPool {
    * 执行周期性清理
    */
   private performPeriodicCleanup(): void {
-    const now = Date.now();
-    const timeoutThreshold = now - this.parserTimeout;
+    // const timeoutThreshold = now - this.parserTimeout;
 
     // 清理超时的活跃解析器
     const timedOutParsers: Parser[] = [];
@@ -263,7 +252,7 @@ export class LightweightParserPool {
   emergencyCleanup(): void {
     console.warn('Performing emergency parser pool cleanup');
     this.cleanup();
-    
+
     // 强制垃圾回收
     if (global.gc) {
       global.gc();

@@ -21,8 +21,16 @@ module.exports = {
     'html'
   ],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^@/core/(.*)$': '<rootDir>/src/core/$1',
+    '^@/types/(.*)$': '<rootDir>/src/types/$1',
+    '^@/config/(.*)$': '<rootDir>/src/config/$1',
+    '^@/errors/(.*)$': '<rootDir>/src/errors/$1',
+    '^@/middleware/(.*)$': '<rootDir>/src/middleware/$1',
+    '^@/routes/(.*)$': '<rootDir>/src/routes/$1',
+    '^@/controllers/(.*)$': '<rootDir>/src/controllers/$1',
+    '^@/utils/(.*)$': '<rootDir>/src/utils/$1',
   },
   testTimeout: 10000,
 };

@@ -46,8 +46,8 @@ describe('TreeSitterService', () => {
       
       expect(result.success).toBe(true);
       expect(result.matches).toHaveLength(1);
-      expect(result.matches[0].captureName).toBe('func');
-      expect(result.matches[0].type).toBe('function_declaration');
+      expect(result.matches[0]?.captureName).toBe('func');
+      expect(result.matches[0]?.type).toBe('function_declaration');
       expect(result.errors).toHaveLength(0);
     });
 
@@ -114,6 +114,7 @@ describe('TreeSitterService', () => {
     test('应该正确处理缺少必需字段的请求', async () => {
       const request = {
         language: 'javascript' as SupportedLanguage,
+        code: '', // 添加缺失的code字段
         // 缺少 code 字段
         query: '(function_declaration) @func',
       };

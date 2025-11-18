@@ -2,7 +2,7 @@
  * 资源清理器 - 分层清理策略和垃圾回收机制
  */
 
-import { MemoryConfig, CleanupStrategy } from '@/config/memory';
+import { CleanupStrategy } from '@/config/memory';
 import { CleanupResult } from '@/types/errors';
 import { forceGarbageCollection, getMemoryUsage } from '@/utils/memoryUtils';
 
@@ -19,17 +19,16 @@ class BasicCleanupStrategy extends BaseCleanupStrategy {
   async execute(): Promise<CleanupResult> {
     const startTime = Date.now();
     const beforeMemory = getMemoryUsage();
-    
+
     // 基本清理：强制垃圾回收
-    const gcPerformed = forceGarbageCollection();
-    
+
     // 等待GC完成
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     const afterMemory = getMemoryUsage();
     const freed = Math.round((beforeMemory.heapUsed - afterMemory.heapUsed) / 1024 / 1024);
     const duration = Date.now() - startTime;
-    
+
     return {
       strategy: this.getStrategyName(),
       memoryFreed: Math.max(0, freed),
@@ -57,32 +56,32 @@ class AggressiveCleanupStrategy extends BaseCleanupStrategy {
   async execute(): Promise<CleanupResult> {
     const startTime = Date.now();
     const beforeMemory = getMemoryUsage();
-    
+
     try {
       // 清理解析器池
       if (this.parserPool) {
         this.parserPool.cleanup();
       }
-      
+
       // 清理树管理器
       if (this.treeManager) {
         this.treeManager.emergencyCleanup();
       }
-      
+
       // 多次垃圾回收
       for (let i = 0; i < 3; i++) {
         forceGarbageCollection();
         await new Promise(resolve => setTimeout(resolve, 100));
       }
-      
+
     } catch (error) {
       console.warn('Aggressive cleanup encountered error:', error);
     }
-    
+
     const afterMemory = getMemoryUsage();
     const freed = Math.round((beforeMemory.heapUsed - afterMemory.heapUsed) / 1024 / 1024);
     const duration = Date.now() - startTime;
-    
+
     return {
       strategy: this.getStrategyName(),
       memoryFreed: Math.max(0, freed),
@@ -111,43 +110,43 @@ class EmergencyCleanupStrategy extends BaseCleanupStrategy {
   async execute(): Promise<CleanupResult> {
     const startTime = Date.now();
     const beforeMemory = getMemoryUsage();
-    
+
     try {
       console.warn('Performing emergency cleanup...');
-      
+
       // 清理所有缓存
       if (this.languageManager) {
         this.languageManager.clearCache();
       }
-      
+
       // 紧急清理所有资源
       if (this.parserPool) {
         this.parserPool.emergencyCleanup();
       }
-      
+
       if (this.treeManager) {
         this.treeManager.emergencyCleanup();
       }
-      
+
       // 强制多次垃圾回收
       for (let i = 0; i < 5; i++) {
         forceGarbageCollection();
         await new Promise(resolve => setTimeout(resolve, 200));
       }
-      
+
       // 尝试触发Node.js的内存压力回调（如果可用）
       if (global.gc) {
         global.gc();
       }
-      
+
     } catch (error) {
       console.error('Emergency cleanup failed:', error);
     }
-    
+
     const afterMemory = getMemoryUsage();
     const freed = Math.round((beforeMemory.heapUsed - afterMemory.heapUsed) / 1024 / 1024);
     const duration = Date.now() - startTime;
-    
+
     return {
       strategy: this.getStrategyName(),
       memoryFreed: Math.max(0, freed),
@@ -262,12 +261,12 @@ export class ResourceCleaner {
 
       console.log(`Performing ${strategy} cleanup...`);
       const result = await cleanupStrategy.execute();
-      
+
       // 记录清理结果
       this.recordCleanupResult(result);
-      
+
       console.log(`${strategy} cleanup completed: ${result.memoryFreed}MB freed in ${result.duration}ms`);
-      
+
       return result;
     } catch (error) {
       const errorResult: CleanupResult = {
@@ -276,15 +275,15 @@ export class ResourceCleaner {
         success: false,
         duration: 0,
       };
-      
+
       this.recordCleanupResult(errorResult);
-      
+
       console.error(`${strategy} cleanup failed:`, error);
-      
+
       return errorResult;
     } finally {
       this.isCleaning = false;
-      
+
       // 处理队列中的清理请求
       this.processCleanupQueue();
     }
@@ -320,7 +319,7 @@ export class ResourceCleaner {
    */
   private recordCleanupResult(result: CleanupResult): void {
     this.cleanupHistory.push(result);
-    
+
     // 限制历史记录大小
     if (this.cleanupHistory.length > this.maxHistorySize) {
       this.cleanupHistory.shift();
@@ -350,17 +349,18 @@ export class ResourceCleaner {
     const successfulCleanups = this.cleanupHistory.filter(r => r.success).length;
     const failedCleanups = totalCleanups - successfulCleanups;
     const totalMemoryFreed = this.cleanupHistory.reduce((sum, r) => sum + r.memoryFreed, 0);
-    const averageCleanupTime = totalCleanups > 0 
-      ? this.cleanupHistory.reduce((sum, r) => sum + r.duration, 0) / totalCleanups 
+    const averageCleanupTime = totalCleanups > 0
+      ? this.cleanupHistory.reduce((sum, r) => sum + r.duration, 0) / totalCleanups
       : 0;
 
     // 按策略分组统计
     const strategyGroups: Record<string, CleanupResult[]> = {};
     this.cleanupHistory.forEach(result => {
-      if (!strategyGroups[result.strategy]) {
-        strategyGroups[result.strategy] = [];
+      const strategy = result.strategy || 'unknown';
+      if (!strategyGroups[strategy]) {
+        strategyGroups[strategy] = [];
       }
-      strategyGroups[result.strategy].push(result);
+      strategyGroups[strategy].push(result);
     });
 
     const strategyStats: Record<string, { count: number; successRate: number; avgMemoryFreed: number }> = {};
@@ -368,7 +368,7 @@ export class ResourceCleaner {
       const count = results.length;
       const successCount = results.filter(r => r.success).length;
       const avgMemoryFreed = results.reduce((sum, r) => sum + r.memoryFreed, 0) / count;
-      
+
       strategyStats[strategy] = {
         count,
         successRate: (successCount / count) * 100,
@@ -401,7 +401,7 @@ export class ResourceCleaner {
    */
   isHealthy(): boolean {
     const stats = this.getCleanupStats();
-    
+
     // 检查失败率
     if (stats.totalCleanups > 10 && stats.failedCleanups / stats.totalCleanups > 0.3) {
       return false;

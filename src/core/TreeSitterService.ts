@@ -2,7 +2,6 @@
  * 核心Tree-sitter服务 - 统一的请求处理和资源管理
  */
 
-import * as Parser from 'tree-sitter';
 import { LanguageManager } from './LanguageManager';
 import { LightweightParserPool } from './LightweightParserPool';
 import { MemoryMonitor } from './MemoryMonitor';
@@ -113,20 +112,20 @@ export class TreeSitterService {
    */
   private async executeRequest(request: ParseRequest): Promise<ParseResult> {
     const { language, code, query, queries = [] } = request;
-    
-    let parser: Parser | null = null;
+
+    let parser: any | null = null;
     let tree: TreeSitterTree | null = null;
 
     try {
       // 获取语言模块
-      const languageModule = await this.languageManager.getLanguage(language);
-      
+      const languageModule = await this.languageManager.getLanguage(language as SupportedLanguage);
+
       // 获取解析器
-      parser = this.parserPool.getParser(language);
+      parser = this.parserPool.getParser(language as SupportedLanguage);
       parser.setLanguage(languageModule);
 
       // 解析代码
-      tree = parser.parse(code) as TreeSitterTree;
+      tree = parser.parse(code) as any as TreeSitterTree;
       this.activeTrees.add(tree);
 
       // 验证解析结果
@@ -149,9 +148,9 @@ export class TreeSitterService {
       if (tree) {
         this.destroyTree(tree);
       }
-      
+
       if (parser) {
-        this.parserPool.releaseParser(parser, language);
+        this.parserPool.releaseParser(parser, language as SupportedLanguage);
       }
     }
   }
@@ -169,8 +168,8 @@ export class TreeSitterService {
 
         try {
           const queryMatches = query.matches(tree.rootNode);
-          
-          const queryResults = queryMatches.flatMap(match => 
+
+          const queryResults = queryMatches.flatMap(match =>
             match.captures.map(capture => ({
               captureName: capture.name,
               type: capture.node.type,
@@ -204,10 +203,9 @@ export class TreeSitterService {
    */
   private async handleCriticalMemory(): Promise<void> {
     console.warn('Critical memory usage detected, performing emergency cleanup');
-    
+
     try {
-      const result = await this.resourceCleaner.performCleanup(CleanupStrategy.EMERGENCY);
-      
+
       // 再次检查内存状态
       const memoryStatus = this.memoryMonitor.checkMemory();
       if (memoryStatus.level === 'critical') {
@@ -232,7 +230,7 @@ export class TreeSitterService {
   /**
    * 处理错误
    */
-  private handleError(error: unknown, request: ParseRequest): ParseResult {
+  private handleError(error: unknown, _request: ParseRequest): ParseResult {
     if (error instanceof TreeSitterError) {
       return {
         success: false,
@@ -302,7 +300,7 @@ export class TreeSitterService {
 
     // 确定整体状态
     let status: 'healthy' | 'warning' | 'error' = 'healthy';
-    
+
     if (memory.level === 'critical' || errorRate > 20) {
       status = 'error';
     } else if (memory.level === 'warning' || errorRate > 10 || !this.parserPool.isHealthy()) {
@@ -337,8 +335,7 @@ export class TreeSitterService {
   /**
    * 预加载语言模块
    */
-  async preloadLanguages(languages?: SupportedLanguage[]): Promise<void> {
-    const langsToPreload = languages || this.languageManager.getSupportedLanguages();
+  async preloadLanguages(_languages?: SupportedLanguage[]): Promise<void> {
     await this.languageManager.preloadAllLanguages();
   }
 
@@ -351,7 +348,7 @@ export class TreeSitterService {
     success: boolean;
   }> {
     const result = await this.resourceCleaner.performCleanup(strategy);
-    
+
     return {
       memoryFreed: result.memoryFreed,
       duration: result.duration,
@@ -389,17 +386,17 @@ export class TreeSitterService {
    */
   async emergencyCleanup(): Promise<void> {
     console.warn('Performing emergency cleanup');
-    
+
     // 清理所有活跃资源
     this.activeTrees.forEach(tree => this.destroyTree(tree));
     this.activeQueries.forEach(query => this.destroyQuery(query));
-    
+
     // 清理解析器池
     this.parserPool.emergencyCleanup();
-    
+
     // 清理语言管理器缓存
     this.languageManager.clearCache();
-    
+
     // 执行紧急清理
     await this.resourceCleaner.performCleanup(CleanupStrategy.EMERGENCY);
   }
@@ -409,16 +406,16 @@ export class TreeSitterService {
    */
   destroy(): void {
     console.log('Destroying TreeSitterService...');
-    
+
     // 清理所有活跃资源
     this.activeTrees.forEach(tree => this.destroyTree(tree));
     this.activeQueries.forEach(query => this.destroyQuery(query));
-    
+
     // 销毁组件
     this.parserPool.destroy();
     this.memoryMonitor.destroy();
     this.resourceCleaner.destroy();
-    
+
     console.log('TreeSitterService destroyed');
   }
 }

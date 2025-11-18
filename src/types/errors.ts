@@ -27,7 +27,7 @@ export interface ErrorDetails {
 export class TreeSitterError extends Error {
   public readonly type: ErrorType;
   public readonly severity: ErrorSeverity;
-  public readonly details?: ErrorDetails;
+  public readonly details: ErrorDetails | undefined;
   public readonly timestamp: number;
 
   constructor(
@@ -45,15 +45,20 @@ export class TreeSitterError extends Error {
   }
 
   toJSON(): ErrorRecord {
-    return {
+    const record: ErrorRecord = {
       name: this.name,
       type: this.type,
       severity: this.severity,
       message: this.message,
-      details: this.details,
       timestamp: this.timestamp,
-      stack: this.stack,
     };
+    if (this.details) {
+      record.details = this.details;
+    }
+    if (this.stack) {
+      record.stack = this.stack;
+    }
+    return record;
   }
 }
 

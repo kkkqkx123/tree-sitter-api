@@ -15,12 +15,12 @@ global.console = {
 };
 
 // 设置测试环境变量
-process.env.NODE_ENV = 'test';
-process.env.LOG_LEVEL = 'error';
-process.env.ENABLE_REQUEST_LOGGING = 'false';
+process.env['NODE_ENV'] = 'test';
+process.env['LOG_LEVEL'] = 'error';
+process.env['ENABLE_REQUEST_LOGGING'] = 'false';
 
 // 全局测试工具
-global.testUtils = {
+(global as any).testUtils = {
   /**
    * 创建测试用的解析请求
    */

@@ -5,55 +5,55 @@
 export const ServerConfig = {
   // 服务器基础配置
   SERVER: {
-    PORT: parseInt(process.env.PORT || '3000', 10),
-    HOST: process.env.HOST || 'localhost',
-    ENVIRONMENT: process.env.NODE_ENV || 'development',
+    PORT: parseInt(process.env["PORT"] || '3000', 10),
+    HOST: process.env["HOST"] || 'localhost',
+    ENVIRONMENT: process.env["NODE_ENV"] || 'development',
   },
-  
+
   // 请求配置
   REQUEST: {
-    TIMEOUT: parseInt(process.env.REQUEST_TIMEOUT || '30000', 10), // 30秒
-    MAX_SIZE: process.env.MAX_REQUEST_SIZE || '5mb',
+    TIMEOUT: parseInt(process.env["REQUEST_TIMEOUT"] || '30000', 10), // 30秒
+    MAX_SIZE: process.env["MAX_REQUEST_SIZE"] || '5mb',
     RATE_LIMIT: {
       WINDOW_MS: 60000, // 1分钟
-      MAX_REQUESTS: parseInt(process.env.MAX_REQUESTS_PER_MINUTE || '100', 10),
+      MAX_REQUESTS: parseInt(process.env["MAX_REQUESTS_PER_MINUTE"] || '100', 10),
     }
   },
-  
+
   // CORS配置
   CORS: {
-    ORIGIN: process.env.CORS_ORIGIN || '*',
+    ORIGIN: process.env["CORS_ORIGIN"] || '*',
     METHODS: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     ALLOWED_HEADERS: ['Content-Type', 'Authorization', 'X-Requested-With'],
     CREDENTIALS: false,
   },
-  
+
   // 日志配置
   LOGGING: {
-    LEVEL: process.env.LOG_LEVEL || 'info',
-    FORMAT: process.env.LOG_FORMAT || 'combined',
-    ENABLE_REQUEST_LOGGING: process.env.ENABLE_REQUEST_LOGGING !== 'false',
+    LEVEL: process.env["LOG_LEVEL"] || 'info',
+    FORMAT: process.env["LOG_FORMAT"] || 'combined',
+    ENABLE_REQUEST_LOGGING: process.env["ENABLE_REQUEST_LOGGING"] !== 'false',
   },
-  
+
   // 健康检查配置
   HEALTH: {
-    ENABLED: process.env.ENABLE_HEALTH_CHECK !== 'false',
+    ENABLED: process.env["ENABLE_HEALTH_CHECK"] !== 'false',
     PATH: '/api/health',
-    INTERVAL: parseInt(process.env.HEALTH_CHECK_INTERVAL || '30000', 10), // 30秒
+    INTERVAL: parseInt(process.env["HEALTH_CHECK_INTERVAL"] || '30000', 10), // 30秒
   },
-  
+
   // API配置
   API: {
     VERSION: 'v1',
     BASE_PATH: '/api',
-    PREFIX: process.env.API_PREFIX || '/api',
+    PREFIX: process.env["API_PREFIX"] || '/api',
   },
-  
+
   // 安全配置
   SECURITY: {
-    ENABLE_RATE_LIMITING: process.env.ENABLE_RATE_LIMITING !== 'false',
-    ENABLE_HELMET: process.env.ENABLE_HELMET !== 'false',
-    TRUST_PROXY: process.env.TRUST_PROXY === 'true',
+    ENABLE_RATE_LIMITING: process.env["ENABLE_RATE_LIMITING"] !== 'false',
+    ENABLE_HELMET: process.env["ENABLE_HELMET"] !== 'false',
+    TRUST_PROXY: process.env["TRUST_PROXY"] === 'true',
   }
 };
 

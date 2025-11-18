@@ -2,7 +2,7 @@
  * 内存监控器 - 实时监控内存使用情况和趋势分析
  */
 
-import { MemoryConfig, MemoryLevel, MemoryTrend } from '@/config/memory';
+import { MemoryConfig, MemoryTrend } from '@/config/memory';
 import { MemoryStatus } from '@/types/errors';
 import { forceGarbageCollection, getMemoryUsage } from '@/utils/memoryUtils';
 
@@ -95,24 +95,24 @@ export class MemoryMonitor {
    */
   private calculateTrend(): MemoryTrend {
     if (this.memoryHistory.length < 3) {
-      return 'stable';
+      return MemoryTrend.STABLE;
     }
 
     const recent = this.memoryHistory.slice(-3);
-    const first = recent[0];
-    const last = recent[recent.length - 1];
+    const first = recent[0] ?? 0;
+    const last = recent[recent.length - 1] ?? 0;
     const diff = last - first;
     
     // 趋势阈值 (MB)
     const trendThreshold = 10;
     
     if (diff > trendThreshold) {
-      return 'increasing';
+      return MemoryTrend.INCREASING;
     } else if (diff < -trendThreshold) {
-      return 'decreasing';
+      return MemoryTrend.DECREASING;
     }
     
-    return 'stable';
+    return MemoryTrend.STABLE;
   }
 
   /**
@@ -168,11 +168,16 @@ export class MemoryMonitor {
     const peak = this.memoryHistory.length > 0 ? Math.max(...this.memoryHistory) : current;
     const minimum = this.memoryHistory.length > 0 ? Math.min(...this.memoryHistory) : current;
 
+    const currentVal = current ?? Math.round(getMemoryUsage().heapUsed / 1024 / 1024);
+    const averageVal = average ?? currentVal;
+    const peakVal = peak ?? currentVal;
+    const minimumVal = minimum ?? currentVal;
+    
     return {
-      current,
-      average,
-      peak,
-      minimum,
+      current: currentVal,
+      average: averageVal,
+      peak: peakVal,
+      minimum: minimumVal,
       trend: this.calculateTrend(),
       history: [...this.memoryHistory],
       historyLength: this.memoryHistory.length,

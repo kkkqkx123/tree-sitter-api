@@ -112,8 +112,8 @@ export class MemoryMonitor {
     }
 
     const recent = this.measurements.slice(-3);
-    const first = recent[0].usage.heapUsed;
-    const last = recent[recent.length - 1].usage.heapUsed;
+    const first = recent[0]?.usage.heapUsed ?? 0;
+    const last = recent[recent.length - 1]?.usage.heapUsed ?? 0;
     const diff = last - first;
     const threshold = 10 * 1024 * 1024; // 10MB
 
@@ -167,7 +167,7 @@ export class MemoryMonitor {
         return measurement.usage;
       }
       return max;
-    }, this.measurements[0].usage);
+    }, this.measurements[0]?.usage ?? { rss: 0, heapTotal: 0, heapUsed: 0, external: 0, arrayBuffers: 0 });
   }
 
   /**
