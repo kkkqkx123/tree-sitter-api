@@ -2,6 +2,11 @@
  * Tree-sitter API服务器入口点
  */
 
+import dotenv from 'dotenv';
+
+// 立即加载环境变量
+dotenv.config();
+
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
@@ -177,7 +182,19 @@ class TreeSitterServer {
     const host = ServerConfig.SERVER.HOST;
 
     this.server = this.app.listen(port, host, () => {
-      log.info('Server', `Tree-sitter API server running on ${host}:${port}`);
+      const addr = this.server.address();
+      let displayUrl = `${host}:${port}`;
+      
+      if (typeof addr === 'object' && addr.address && addr.port) {
+        const address = addr.address;
+        const isIPv6 = address.includes(':');
+        const displayAddr = address === '::1' ? 'localhost' : 
+                           address === '::' ? '*' : 
+                           isIPv6 ? `[${address}]` : address;
+        displayUrl = `${displayAddr}:${addr.port}`;
+      }
+      
+      log.info('Server', `Tree-sitter API server running on ${displayUrl}`);
       log.info('Server', `Environment: ${ServerConfig.SERVER.ENVIRONMENT}`);
       log.info('Server', `API prefix: ${ServerConfig.API.PREFIX}`);
       
