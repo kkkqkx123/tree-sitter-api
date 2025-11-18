@@ -48,7 +48,7 @@ class BasicCleanupStrategy extends BaseCleanupStrategy {
  */
 class AggressiveCleanupStrategy extends BaseCleanupStrategy {
   constructor(
-    private parserPool: { cleanup(): void; emergencyCleanup(): void },
+    public parserPool: { cleanup(): void; emergencyCleanup(): void },
     private treeManager: { emergencyCleanup(): void } | null = null
   ) {
     super();
@@ -101,9 +101,9 @@ class AggressiveCleanupStrategy extends BaseCleanupStrategy {
  */
 class EmergencyCleanupStrategy extends BaseCleanupStrategy {
   constructor(
-    private parserPool: { cleanup(): void; emergencyCleanup(): void },
-    private treeManager: { emergencyCleanup(): void } | null = null,
-    private languageManager: { clearCache(): void } | null = null
+    public parserPool: { cleanup(): void; emergencyCleanup(): void },
+    public treeManager: { emergencyCleanup(): void } | null = null,
+    public languageManager: { clearCache(): void } | null = null
   ) {
     super();
   }
@@ -167,6 +167,9 @@ export class ResourceCleaner {
   private maxHistorySize = 50;
   private isCleaning = false;
   private cleanupQueue: Array<{ strategy: CleanupStrategy; resolve: (result: CleanupResult) => void }> = [];
+  private parserPool: { cleanup(): void; emergencyCleanup(): void } | null = null;
+  private treeManager: { emergencyCleanup(): void } | null = null;
+  private languageManager: { clearCache(): void } | null = null;
 
   constructor() {
     this.initializeStrategies();
@@ -184,59 +187,39 @@ export class ResourceCleaner {
    * 设置解析器池（用于激进和紧急清理）
    */
   setParserPool(parserPool: { cleanup(): void; emergencyCleanup(): void }): void {
-    this.cleanupStrategies.set(
-      CleanupStrategy.AGGRESSIVE,
-      new AggressiveCleanupStrategy(parserPool)
-    );
-    this.cleanupStrategies.set(
-      CleanupStrategy.EMERGENCY,
-      new EmergencyCleanupStrategy(parserPool)
-    );
+    this.parserPool = parserPool;
+    this.updateStrategies();
   }
 
   /**
    * 设置树管理器（用于激进和紧急清理）
    */
   setTreeManager(treeManager: { emergencyCleanup(): void }): void {
-    // 更新现有的激进清理策略
-    const aggressive = this.cleanupStrategies.get(CleanupStrategy.AGGRESSIVE);
-    if (aggressive instanceof AggressiveCleanupStrategy) {
-      this.cleanupStrategies.set(
-        CleanupStrategy.AGGRESSIVE,
-        new AggressiveCleanupStrategy(
-          // 这里需要获取parserPool，简化处理
-          {} as any,
-          treeManager
-        )
-      );
-    }
-
-    // 更新现有的紧急清理策略
-    const emergency = this.cleanupStrategies.get(CleanupStrategy.EMERGENCY);
-    if (emergency instanceof EmergencyCleanupStrategy) {
-      this.cleanupStrategies.set(
-        CleanupStrategy.EMERGENCY,
-        new EmergencyCleanupStrategy(
-          {} as any,
-          treeManager
-        )
-      );
-    }
+    this.treeManager = treeManager;
+    this.updateStrategies();
   }
 
   /**
    * 设置语言管理器（用于紧急清理）
    */
   setLanguageManager(languageManager: { clearCache(): void }): void {
-    const emergency = this.cleanupStrategies.get(CleanupStrategy.EMERGENCY);
-    if (emergency instanceof EmergencyCleanupStrategy) {
+    this.languageManager = languageManager;
+    this.updateStrategies();
+  }
+
+  /**
+   * 更新所有策略
+   */
+  private updateStrategies(): void {
+    // 只有在有parserPool时才创建激进和紧急策略
+    if (this.parserPool) {
+      this.cleanupStrategies.set(
+        CleanupStrategy.AGGRESSIVE,
+        new AggressiveCleanupStrategy(this.parserPool, this.treeManager)
+      );
       this.cleanupStrategies.set(
         CleanupStrategy.EMERGENCY,
-        new EmergencyCleanupStrategy(
-          {} as any,
-          null,
-          languageManager
-        )
+        new EmergencyCleanupStrategy(this.parserPool, this.treeManager, this.languageManager)
       );
     }
   }

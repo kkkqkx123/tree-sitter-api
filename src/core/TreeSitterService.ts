@@ -13,8 +13,8 @@ import { EnvConfig } from '@/config/env';
 import { CleanupStrategy } from '@/config/memory';
 import { log } from '@/utils/Logger';
 
-// 导入Tree-sitter Query类
-const Query = require('tree-sitter').Query;
+// 统一使用ES6导入Tree-sitter
+import Parser from 'tree-sitter';
 
 export class TreeSitterService {
   private languageManager: LanguageManager;
@@ -190,7 +190,7 @@ export class TreeSitterService {
     for (const queryString of queries) {
       try {
         // 使用正确的方式创建查询
-        const query = new Query(languageModule, queryString) as TreeSitterQuery;
+        const query = new (Parser as any).Query(languageModule, queryString) as TreeSitterQuery;
         if (!query) {
           log.warn('TreeSitterService', `Failed to create query for: ${queryString}`);
           continue;

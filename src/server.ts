@@ -96,7 +96,7 @@ class TreeSitterServer {
     });
 
     // 404处理
-    this.app.use('*', (req: Request, res: Response) => {
+    this.app.use((req: Request, res: Response) => {
       res.status(404).json({
         success: false,
         errors: [`Route not found: ${req.method} ${req.originalUrl}`],
