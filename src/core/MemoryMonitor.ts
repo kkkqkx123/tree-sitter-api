@@ -1,5 +1,5 @@
 /**
- * 内存监控器 - 实时监控内存使用情况和趋势分析
+ * 内存监控器 - 简化的内存监控功能
  */
 
 import { MemoryConfig, MemoryTrend } from '@/config/memory';
@@ -8,16 +8,12 @@ import { forceGarbageCollection, getMemoryUsage } from '@/utils/memoryUtils';
 import { log } from '@/utils/Logger';
 
 export class MemoryMonitor {
-  private memoryHistory: number[] = [];
   private lastCleanup = 0;
   private lastForceGC = 0;
-  private maxHistorySize: number;
   private monitoringInterval: NodeJS.Timeout | null = null;
   private isMonitoring = false;
 
-  constructor() {
-    this.maxHistorySize = MemoryConfig.LIMITS.MEMORY_HISTORY_SIZE;
-  }
+  constructor() {}
 
   /**
    * 开始内存监控
@@ -29,7 +25,7 @@ export class MemoryMonitor {
 
     this.isMonitoring = true;
     this.monitoringInterval = setInterval(() => {
-      this.recordMemoryUsage();
+      // 简化：只记录日志，不记录历史数据
     }, intervalMs);
 
     log.info('MemoryMonitor', 'Memory monitoring started');
@@ -54,9 +50,6 @@ export class MemoryMonitor {
     const usage = getMemoryUsage();
     const heapUsedMB = Math.round(usage.heapUsed / 1024 / 1024);
     
-    // 记录内存使用
-    this.recordMemoryUsage(heapUsedMB);
-    
     // 确定内存状态级别
     let level: MemoryStatus['level'];
     if (heapUsedMB >= MemoryConfig.THRESHOLDS.MAXIMUM) {
@@ -73,47 +66,8 @@ export class MemoryMonitor {
       heapTotal: Math.round(usage.heapTotal / 1024 / 1024),
       rss: Math.round(usage.rss / 1024 / 1024),
       external: Math.round(usage.external / 1024 / 1024),
-      trend: this.calculateTrend(),
+      trend: MemoryTrend.STABLE, // 简化：默认稳定
     };
-  }
-
-  /**
-   * 记录内存使用情况
-   */
-  private recordMemoryUsage(heapUsedMB?: number): void {
-    const usage = heapUsedMB ?? Math.round(getMemoryUsage().heapUsed / 1024 / 1024);
-    
-    this.memoryHistory.push(usage);
-    
-    // 限制历史记录大小
-    if (this.memoryHistory.length > this.maxHistorySize) {
-      this.memoryHistory.shift();
-    }
-  }
-
-  /**
-   * 计算内存使用趋势
-   */
-  private calculateTrend(): MemoryTrend {
-    if (this.memoryHistory.length < 3) {
-      return MemoryTrend.STABLE;
-    }
-
-    const recent = this.memoryHistory.slice(-3);
-    const first = recent[0] ?? 0;
-    const last = recent[recent.length - 1] ?? 0;
-    const diff = last - first;
-    
-    // 趋势阈值 (MB)
-    const trendThreshold = 10;
-    
-    if (diff > trendThreshold) {
-      return MemoryTrend.INCREASING;
-    } else if (diff < -trendThreshold) {
-      return MemoryTrend.DECREASING;
-    }
-    
-    return MemoryTrend.STABLE;
   }
 
   /**
@@ -147,91 +101,40 @@ export class MemoryMonitor {
   }
 
   /**
-   * 获取内存统计信息
+   * 获取简单的内存统计信息
    */
   getMemoryStats(): {
     current: number;
-    average: number;
     peak: number;
-    minimum: number;
     trend: MemoryTrend;
-    history: number[];
     historyLength: number;
   } {
-    const current = this.memoryHistory.length > 0 
-      ? this.memoryHistory[this.memoryHistory.length - 1] 
-      : Math.round(getMemoryUsage().heapUsed / 1024 / 1024);
-    
-    const average = this.memoryHistory.length > 0
-      ? Math.round(this.memoryHistory.reduce((sum, val) => sum + val, 0) / this.memoryHistory.length)
-      : current;
-    
-    const peak = this.memoryHistory.length > 0 ? Math.max(...this.memoryHistory) : current;
-    const minimum = this.memoryHistory.length > 0 ? Math.min(...this.memoryHistory) : current;
-
-    const currentVal = current ?? Math.round(getMemoryUsage().heapUsed / 1024 / 1024);
-    const averageVal = average ?? currentVal;
-    const peakVal = peak ?? currentVal;
-    const minimumVal = minimum ?? currentVal;
+    const current = Math.round(getMemoryUsage().heapUsed / 1024 / 1024);
     
     return {
-      current: currentVal,
-      average: averageVal,
-      peak: peakVal,
-      minimum: minimumVal,
-      trend: this.calculateTrend(),
-      history: [...this.memoryHistory],
-      historyLength: this.memoryHistory.length,
+      current,
+      peak: current, // 简化：返回当前值作为峰值
+      trend: MemoryTrend.STABLE, // 简化：默认稳定
+      historyLength: 0, // 简化：无历史记录
     };
   }
 
   /**
-   * 获取详细的内存使用报告
+   * 获取简化的内存使用报告
    */
   getDetailedMemoryReport(): {
     status: MemoryStatus;
     stats: ReturnType<MemoryMonitor['getMemoryStats']>;
     process: NodeJS.MemoryUsage;
-    recommendations: string[];
-    alerts: string[];
   } {
     const status = this.checkMemory();
     const stats = this.getMemoryStats();
     const process = getMemoryUsage();
     
-    const recommendations: string[] = [];
-    const alerts: string[] = [];
-
-    // 生成建议和告警
-    if (status.level === 'critical') {
-      alerts.push('Memory usage is critical! Immediate cleanup required.');
-      recommendations.push('Consider reducing parser pool size');
-      recommendations.push('Enable aggressive cleanup strategy');
-    } else if (status.level === 'warning') {
-      alerts.push('Memory usage is high. Monitor closely.');
-      recommendations.push('Consider periodic cleanup');
-    }
-
-    if (status.trend === 'increasing' && stats.historyLength >= 5) {
-      alerts.push('Memory usage is consistently increasing.');
-      recommendations.push('Check for memory leaks');
-    }
-
-    if (stats.peak - stats.current > 50) {
-      recommendations.push('Memory usage has decreased significantly from peak');
-    }
-
-    const heapUsagePercentage = (process.heapUsed / process.heapTotal) * 100;
-    if (heapUsagePercentage > 80) {
-      alerts.push(`Heap usage is at ${heapUsagePercentage.toFixed(1)}%`);
-    }
-
     return {
       status,
       stats,
       process,
-      recommendations,
-      alerts,
     };
   }
 
@@ -270,75 +173,9 @@ export class MemoryMonitor {
   }
 
   /**
-   * 检查内存泄漏风险
-   */
-  checkMemoryLeakRisk(): {
-    risk: 'low' | 'medium' | 'high';
-    factors: string[];
-    confidence: number;
-  } {
-    const stats = this.getMemoryStats();
-    const status = this.checkMemory();
-    
-    const factors: string[] = [];
-    let riskScore = 0;
-
-    // 检查趋势
-    if (status.trend === 'increasing') {
-      factors.push('Memory usage is increasing');
-      riskScore += 30;
-    }
-
-    // 检查当前状态
-    if (status.level === 'critical') {
-      factors.push('Memory usage is critical');
-      riskScore += 40;
-    } else if (status.level === 'warning') {
-      factors.push('Memory usage is high');
-      riskScore += 20;
-    }
-
-    // 检查峰值与当前值的差异
-    if (stats.peak - stats.current < 10) {
-      factors.push('Memory usage is consistently near peak');
-      riskScore += 25;
-    }
-
-    // 检查历史数据
-    if (stats.historyLength >= 5) {
-      const recentHalf = stats.history.slice(-Math.floor(stats.historyLength / 2));
-      const olderHalf = stats.history.slice(0, Math.floor(stats.historyLength / 2));
-      const recentAvg = recentHalf.reduce((sum, val) => sum + val, 0) / recentHalf.length;
-      const olderAvg = olderHalf.reduce((sum, val) => sum + val, 0) / olderHalf.length;
-      
-      if (recentAvg > olderAvg * 1.2) {
-        factors.push('Recent memory usage is significantly higher than historical average');
-        riskScore += 35;
-      }
-    }
-
-    // 确定风险等级
-    let risk: 'low' | 'medium' | 'high';
-    if (riskScore >= 70) {
-      risk = 'high';
-    } else if (riskScore >= 40) {
-      risk = 'medium';
-    } else {
-      risk = 'low';
-    }
-
-    return {
-      risk,
-      factors,
-      confidence: Math.min(100, riskScore),
-    };
-  }
-
-  /**
    * 重置监控历史
    */
   resetHistory(): void {
-    this.memoryHistory = [];
     this.lastCleanup = 0;
     this.lastForceGC = 0;
   }
@@ -348,16 +185,10 @@ export class MemoryMonitor {
    */
   getMonitoringStatus(): {
     isMonitoring: boolean;
-    historyLength: number;
-    lastCleanup: number;
-    lastForceGC: number;
     uptime: number;
   } {
     return {
       isMonitoring: this.isMonitoring,
-      historyLength: this.memoryHistory.length,
-      lastCleanup: this.lastCleanup,
-      lastForceGC: this.lastForceGC,
       uptime: process.uptime(),
     };
   }

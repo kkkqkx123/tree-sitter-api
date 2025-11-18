@@ -3,7 +3,7 @@
  */
 
 import { LanguageManager } from './LanguageManager';
-import { LightweightParserPool } from './LightweightParserPool';
+import { ParserPool } from './ParserPool';
 import { MemoryMonitor } from './MemoryMonitor';
 import { ResourceCleaner } from './ResourceCleaner';
 import { ParseRequest, ParseResult, MatchResult } from '@/types/api';
@@ -14,11 +14,10 @@ import { CleanupStrategy } from '@/config/memory';
 import { log } from '@/utils/Logger';
 
 // 统一使用ES6导入Tree-sitter
-import Parser from 'tree-sitter';
 
 export class TreeSitterService {
   private languageManager: LanguageManager;
-  private parserPool: LightweightParserPool;
+  private parserPool: ParserPool;
   private memoryMonitor: MemoryMonitor;
   private resourceCleaner: ResourceCleaner;
   private activeTrees: Set<TreeSitterTree> = new Set();
@@ -28,7 +27,7 @@ export class TreeSitterService {
 
   constructor() {
     this.languageManager = new LanguageManager();
-    this.parserPool = new LightweightParserPool();
+    this.parserPool = new ParserPool();
     this.memoryMonitor = new MemoryMonitor();
     this.resourceCleaner = new ResourceCleaner();
 
@@ -125,6 +124,7 @@ export class TreeSitterService {
 
     let parser: any | null = null;
     let tree: TreeSitterTree | null = null;
+    const cleanup: Array<() => void> = [];
 
     try {
       // 获取语言模块
@@ -134,9 +134,23 @@ export class TreeSitterService {
       parser = this.parserPool.getParser(language as SupportedLanguage);
       parser.setLanguage(languageModule);
 
+      // 添加解析器释放到清理队列
+      cleanup.push(() => {
+        if (parser) {
+          this.parserPool.releaseParser(parser, language as SupportedLanguage);
+        }
+      });
+
       // 解析代码
       tree = parser.parse(code) as any as TreeSitterTree;
       this.activeTrees.add(tree);
+
+      // 添加tree销毁到清理队列
+      cleanup.push(() => {
+        if (tree) {
+          this.destroyTree(tree);
+        }
+      });
 
       // 验证解析结果 - 检查tree是否有效
       if (!tree) {
@@ -146,23 +160,23 @@ export class TreeSitterService {
           'Failed to parse code: invalid tree structure'
         );
       }
-      
+
       // 检查根节点是否存在
       if (!tree.rootNode) {
         log.warn('TreeSitterService', 'Parsed tree has no root node');
         return { success: true, matches: [], errors: [] };
       }
-      
+
       log.info('TreeSitterService', `Parsed tree with type: ${tree.rootNode.type}, childCount: ${tree.rootNode.childCount}`);
 
       // 执行查询
       const allQueries = query ? [query, ...queries] : queries;
-      
+
       // 如果没有查询，直接返回空结果
       if (allQueries.length === 0) {
         return { success: true, matches: [], errors: [] };
       }
-      
+
       log.info('TreeSitterService', `Executing ${allQueries.length} queries: ${allQueries.join(', ')}`);
       const matches = await this.executeQueries(tree, allQueries, languageModule);
       log.info('TreeSitterService', `Found ${matches.length} matches`);
@@ -170,13 +184,13 @@ export class TreeSitterService {
       return { success: true, matches, errors: [] };
 
     } finally {
-      // 清理资源
-      if (tree) {
-        this.destroyTree(tree);
-      }
-
-      if (parser) {
-        this.parserPool.releaseParser(parser, language as SupportedLanguage);
+      // 确保所有资源都被清理
+      for (const cleanupFn of cleanup) {
+        try {
+          cleanupFn();
+        } catch (error) {
+          log.warn('TreeSitterService', 'Error during resource cleanup:', error);
+        }
       }
     }
   }
@@ -189,13 +203,13 @@ export class TreeSitterService {
 
     for (const queryString of queries) {
       try {
-        // 使用正确的方式创建查询
-        const query = new (Parser as any).Query(languageModule, queryString) as TreeSitterQuery;
+        // 使用正确的方式创建查询 - Tree-sitter的查询需要通过language.query()方式创建
+        const query = languageModule.query(queryString) as TreeSitterQuery;
         if (!query) {
           log.warn('TreeSitterService', `Failed to create query for: ${queryString}`);
           continue;
         }
-        
+
         this.activeQueries.add(query);
 
         try {
@@ -204,9 +218,9 @@ export class TreeSitterService {
             log.warn('TreeSitterService', 'Root node is null or undefined');
             continue;
           }
-          
+
           const queryMatches = query.matches(tree.rootNode);
-          
+
           // 检查匹配结果
           if (!queryMatches || !Array.isArray(queryMatches)) {
             log.warn('TreeSitterService', `Query returned invalid matches: ${queryMatches}`);
@@ -217,7 +231,7 @@ export class TreeSitterService {
             if (!match || !match.captures || !Array.isArray(match.captures)) {
               return [];
             }
-            
+
             return match.captures
               .filter((capture: any) => capture && capture.name && capture.node)
               .map((capture: any) => {
@@ -225,7 +239,7 @@ export class TreeSitterService {
                   log.warn('TreeSitterService', 'Invalid capture object');
                   return null;
                 }
-                
+
                 return {
                   captureName: capture.name,
                   type: capture.node.type,
@@ -256,38 +270,26 @@ export class TreeSitterService {
     return matches;
   }
 
+
   /**
    * 处理严重内存状态
    */
   private async handleCriticalMemory(): Promise<void> {
     log.warn('TreeSitterService', 'Critical memory usage detected, performing emergency cleanup');
 
-    try {
-
-      // 再次检查内存状态
-      const memoryStatus = this.memoryMonitor.checkMemory();
-      if (memoryStatus.level === 'critical') {
-        throw new TreeSitterError(
-          ErrorType.MEMORY_ERROR,
-          ErrorSeverity.CRITICAL,
-          'Service temporarily unavailable: out of memory after emergency cleanup'
-        );
-      }
-    } catch (error) {
-      if (error instanceof TreeSitterError) {
-        throw error;
-      }
+    // 再次检查内存状态
+    const memoryStatus = this.memoryMonitor.checkMemory();
+    if (memoryStatus.level === 'critical') {
       throw new TreeSitterError(
         ErrorType.MEMORY_ERROR,
         ErrorSeverity.CRITICAL,
-        'Emergency cleanup failed'
+        'Service temporarily unavailable: out of memory'
       );
     }
   }
-
   /**
-   * 处理错误
-   */
+  * 处理错误
+  */
   private handleError(error: unknown, _request: ParseRequest): ParseResult {
     if (error instanceof TreeSitterError) {
       return {
@@ -338,7 +340,7 @@ export class TreeSitterService {
   getHealthStatus(): {
     status: 'healthy' | 'warning' | 'error';
     memory: ReturnType<MemoryMonitor['checkMemory']>;
-    parserPool: ReturnType<LightweightParserPool['getPoolStats']>;
+    parserPool: ReturnType<ParserPool['getPoolStats']>;
     languageManager: ReturnType<LanguageManager['getStatus']>;
     service: {
       requestCount: number;

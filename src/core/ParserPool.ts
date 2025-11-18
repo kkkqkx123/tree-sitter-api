@@ -7,7 +7,7 @@ import { SupportedLanguage } from '@/types/treeSitter';
 import { EnvConfig } from '@/config/env';
 import { log } from '@/utils/Logger';
 
-export class LightweightParserPool {
+export class ParserPool {
   private pools: Map<SupportedLanguage, Parser[]> = new Map();
   private activeParsers: Set<Parser> = new Set();
   private maxPoolSize: number;
@@ -52,15 +52,9 @@ export class LightweightParserPool {
 
     // 检查池大小限制
     if (languagePool.length < this.maxPoolSize) {
-      // 重置解析器状态
-      try {
-        parser.setLanguage(null as any);
-        languagePool.push(parser);
-        this.pools.set(language, languagePool);
-      } catch (error) {
-        // 如果重置失败，直接销毁解析器
-        this.destroyParser(parser);
-      }
+      // 将解析器添加到池中，不重置状态避免出错
+      languagePool.push(parser);
+      this.pools.set(language, languagePool);
     } else {
       // 池已满，销毁解析器
       this.destroyParser(parser);

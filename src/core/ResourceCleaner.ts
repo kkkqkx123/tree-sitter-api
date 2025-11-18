@@ -1,5 +1,5 @@
 /**
- * 资源清理器 - 分层清理策略和垃圾回收机制
+ * 资源清理器 - 简化的资源清理机制
  */
 
 import { CleanupStrategy } from '@/config/memory';
@@ -7,244 +7,107 @@ import { CleanupResult } from '@/types/errors';
 import { forceGarbageCollection, getMemoryUsage } from '@/utils/memoryUtils';
 import { log } from '@/utils/Logger';
 
-// 清理策略接口
-abstract class BaseCleanupStrategy {
-  abstract execute(): Promise<CleanupResult>;
-  abstract getStrategyName(): string;
-}
-
-/**
- * 基础清理策略
- */
-class BasicCleanupStrategy extends BaseCleanupStrategy {
-  async execute(): Promise<CleanupResult> {
-    const startTime = Date.now();
-    const beforeMemory = getMemoryUsage();
-
-    // 基本清理：强制垃圾回收
-
-    // 等待GC完成
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    const afterMemory = getMemoryUsage();
-    const freed = Math.round((beforeMemory.heapUsed - afterMemory.heapUsed) / 1024 / 1024);
-    const duration = Date.now() - startTime;
-
-    return {
-      strategy: this.getStrategyName(),
-      memoryFreed: Math.max(0, freed),
-      success: true,
-      duration,
-    };
-  }
-
-  getStrategyName(): string {
-    return 'basic';
-  }
-}
-
-/**
- * 激进清理策略
- */
-class AggressiveCleanupStrategy extends BaseCleanupStrategy {
-  constructor(
-    public parserPool: { cleanup(): void; emergencyCleanup(): void },
-    private treeManager: { emergencyCleanup(): void } | null = null
-  ) {
-    super();
-  }
-
-  async execute(): Promise<CleanupResult> {
-    const startTime = Date.now();
-    const beforeMemory = getMemoryUsage();
-
-    try {
-      // 清理解析器池
-      if (this.parserPool) {
-        this.parserPool.cleanup();
-      }
-
-      // 清理树管理器
-      if (this.treeManager) {
-        this.treeManager.emergencyCleanup();
-      }
-
-      // 多次垃圾回收
-      for (let i = 0; i < 3; i++) {
-        forceGarbageCollection();
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-
-    } catch (error) {
-      log.warn('ResourceCleaner', 'Aggressive cleanup encountered error:', error);
-    }
-
-    const afterMemory = getMemoryUsage();
-    const freed = Math.round((beforeMemory.heapUsed - afterMemory.heapUsed) / 1024 / 1024);
-    const duration = Date.now() - startTime;
-
-    return {
-      strategy: this.getStrategyName(),
-      memoryFreed: Math.max(0, freed),
-      success: true,
-      duration,
-    };
-  }
-
-  getStrategyName(): string {
-    return 'aggressive';
-  }
-}
-
-/**
- * 紧急清理策略
- */
-class EmergencyCleanupStrategy extends BaseCleanupStrategy {
-  constructor(
-    public parserPool: { cleanup(): void; emergencyCleanup(): void },
-    public treeManager: { emergencyCleanup(): void } | null = null,
-    public languageManager: { clearCache(): void } | null = null
-  ) {
-    super();
-  }
-
-  async execute(): Promise<CleanupResult> {
-    const startTime = Date.now();
-    const beforeMemory = getMemoryUsage();
-
-    try {
-      log.warn('ResourceCleaner', 'Performing emergency cleanup...');
-
-      // 清理所有缓存
-      if (this.languageManager) {
-        this.languageManager.clearCache();
-      }
-
-      // 紧急清理所有资源
-      if (this.parserPool) {
-        this.parserPool.emergencyCleanup();
-      }
-
-      if (this.treeManager) {
-        this.treeManager.emergencyCleanup();
-      }
-
-      // 强制多次垃圾回收
-      for (let i = 0; i < 5; i++) {
-        forceGarbageCollection();
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
-
-      // 尝试触发Node.js的内存压力回调（如果可用）
-      if (global.gc) {
-        global.gc();
-      }
-
-    } catch (error) {
-      log.error('ResourceCleaner', 'Emergency cleanup failed:', error);
-    }
-
-    const afterMemory = getMemoryUsage();
-    const freed = Math.round((beforeMemory.heapUsed - afterMemory.heapUsed) / 1024 / 1024);
-    const duration = Date.now() - startTime;
-
-    return {
-      strategy: this.getStrategyName(),
-      memoryFreed: Math.max(0, freed),
-      success: true,
-      duration,
-    };
-  }
-
-  getStrategyName(): string {
-    return 'emergency';
-  }
-}
-
 export class ResourceCleaner {
-  private cleanupStrategies: Map<CleanupStrategy, BaseCleanupStrategy> = new Map();
   private cleanupHistory: CleanupResult[] = [];
   private maxHistorySize = 50;
   private isCleaning = false;
-  private cleanupQueue: Array<{ strategy: CleanupStrategy; resolve: (result: CleanupResult) => void }> = [];
   private parserPool: { cleanup(): void; emergencyCleanup(): void } | null = null;
   private treeManager: { emergencyCleanup(): void } | null = null;
   private languageManager: { clearCache(): void } | null = null;
 
-  constructor() {
-    this.initializeStrategies();
-  }
+  constructor() {}
 
   /**
-   * 初始化清理策略
-   */
-  private initializeStrategies(): void {
-    // 基础策略总是可用
-    this.cleanupStrategies.set(CleanupStrategy.BASIC, new BasicCleanupStrategy());
-  }
-
-  /**
-   * 设置解析器池（用于激进和紧急清理）
+   * 设置解析器池
    */
   setParserPool(parserPool: { cleanup(): void; emergencyCleanup(): void }): void {
     this.parserPool = parserPool;
-    this.updateStrategies();
   }
 
   /**
-   * 设置树管理器（用于激进和紧急清理）
+   * 设置树管理器
    */
   setTreeManager(treeManager: { emergencyCleanup(): void }): void {
     this.treeManager = treeManager;
-    this.updateStrategies();
   }
 
   /**
-   * 设置语言管理器（用于紧急清理）
+   * 设置语言管理器
    */
   setLanguageManager(languageManager: { clearCache(): void }): void {
     this.languageManager = languageManager;
-    this.updateStrategies();
   }
 
-  /**
-   * 更新所有策略
-   */
-  private updateStrategies(): void {
-    // 只有在有parserPool时才创建激进和紧急策略
-    if (this.parserPool) {
-      this.cleanupStrategies.set(
-        CleanupStrategy.AGGRESSIVE,
-        new AggressiveCleanupStrategy(this.parserPool, this.treeManager)
-      );
-      this.cleanupStrategies.set(
-        CleanupStrategy.EMERGENCY,
-        new EmergencyCleanupStrategy(this.parserPool, this.treeManager, this.languageManager)
-      );
-    }
-  }
-
-  /**
+ /**
    * 执行清理
    */
-  async performCleanup(strategy: CleanupStrategy): Promise<CleanupResult> {
-    // 如果正在清理，加入队列
+  async performCleanup(strategy: CleanupStrategy = CleanupStrategy.BASIC): Promise<CleanupResult> {
+    // 如果正在清理，直接返回
     if (this.isCleaning) {
-      return new Promise((resolve) => {
-        this.cleanupQueue.push({ strategy, resolve });
-      });
+      return {
+        strategy: strategy,
+        memoryFreed: 0,
+        success: false,
+        duration: 0,
+      };
     }
 
     this.isCleaning = true;
 
     try {
-      const cleanupStrategy = this.cleanupStrategies.get(strategy);
-      if (!cleanupStrategy) {
-        throw new Error(`Cleanup strategy ${strategy} not available`);
-      }
+      const startTime = Date.now();
+      const beforeMemory = getMemoryUsage();
 
       log.info('ResourceCleaner', `Performing ${strategy} cleanup...`);
-      const result = await cleanupStrategy.execute();
+      
+      // 根据策略执行清理
+      switch (strategy) {
+        case CleanupStrategy.EMERGENCY:
+          // 紧急清理：清理所有缓存和资源
+          if (this.languageManager) {
+            this.languageManager.clearCache();
+          }
+          if (this.treeManager) {
+            this.treeManager.emergencyCleanup();
+          }
+          if (this.parserPool) {
+            this.parserPool.emergencyCleanup();
+          }
+          // 强制垃圾回收
+          for (let i = 0; i < 3; i++) {
+            forceGarbageCollection();
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+          break;
+        case CleanupStrategy.AGGRESSIVE:
+          // 激进清理：清理解析器池
+          if (this.parserPool) {
+            this.parserPool.cleanup();
+          }
+          // 强制垃圾回收
+          for (let i = 0; i < 2; i++) {
+            forceGarbageCollection();
+            await new Promise(resolve => setTimeout(resolve, 50));
+          }
+          break;
+        case CleanupStrategy.BASIC:
+        default:
+          // 基础清理：仅强制垃圾回收
+          forceGarbageCollection();
+          await new Promise(resolve => setTimeout(resolve, 50));
+          break;
+      }
+
+      const afterMemory = getMemoryUsage();
+      const freed = Math.round((beforeMemory.heapUsed - afterMemory.heapUsed) / 1024 / 1024);
+      const duration = Date.now() - startTime;
+
+      const result: CleanupResult = {
+        strategy: strategy,
+        memoryFreed: Math.max(0, freed),
+        success: true,
+        duration,
+      };
 
       // 记录清理结果
       this.recordCleanupResult(result);
@@ -254,7 +117,7 @@ export class ResourceCleaner {
       return result;
     } catch (error) {
       const errorResult: CleanupResult = {
-        strategy,
+        strategy: strategy,
         memoryFreed: 0,
         success: false,
         duration: 0,
@@ -267,36 +130,9 @@ export class ResourceCleaner {
       return errorResult;
     } finally {
       this.isCleaning = false;
-
-      // 处理队列中的清理请求
-      this.processCleanupQueue();
     }
   }
 
-  /**
-   * 处理清理队列
-   */
-  private async processCleanupQueue(): Promise<void> {
-    if (this.cleanupQueue.length === 0) {
-      return;
-    }
-
-    const next = this.cleanupQueue.shift();
-    if (next) {
-      try {
-        const result = await this.performCleanup(next.strategy);
-        next.resolve(result);
-      } catch (error) {
-        const errorResult: CleanupResult = {
-          strategy: next.strategy,
-          memoryFreed: 0,
-          success: false,
-          duration: 0,
-        };
-        next.resolve(errorResult);
-      }
-    }
-  }
 
   /**
    * 记录清理结果
@@ -377,7 +213,7 @@ export class ResourceCleaner {
    * 获取可用的清理策略
    */
   getAvailableStrategies(): CleanupStrategy[] {
-    return Array.from(this.cleanupStrategies.keys());
+    return [CleanupStrategy.BASIC, CleanupStrategy.AGGRESSIVE, CleanupStrategy.EMERGENCY];
   }
 
   /**
@@ -391,10 +227,6 @@ export class ResourceCleaner {
       return false;
     }
 
-    // 检查队列长度
-    if (this.cleanupQueue.length > 5) {
-      return false;
-    }
 
     return true;
   }
@@ -411,7 +243,6 @@ export class ResourceCleaner {
    */
   reset(): void {
     this.clearHistory();
-    this.cleanupQueue = [];
     this.isCleaning = false;
   }
 
@@ -420,6 +251,5 @@ export class ResourceCleaner {
    */
   destroy(): void {
     this.reset();
-    this.cleanupStrategies.clear();
   }
 }
