@@ -4,8 +4,8 @@
 
 import { Request, Response } from 'express';
 import { createLanguagesController } from '../languagesController';
-import { TreeSitterService } from '@/core/TreeSitterService';
-import { SupportedLanguage } from '@/types/treeSitter';
+import { TreeSitterService } from '../../core/TreeSitterService';
+import { SupportedLanguage } from '../../types/treeSitter';
 
 // 模拟 TreeSitterService
 const mockTreeSitterService = {

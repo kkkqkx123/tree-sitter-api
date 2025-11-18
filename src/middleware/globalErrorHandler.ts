@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { ErrorSeverity, ErrorType, TreeSitterError } from '@/types/errors';
-import { ErrorHandler } from '@/errors/ErrorHandler';
-import { RecoveryStrategy } from '@/errors/RecoveryStrategy';
-import { log } from '@/utils/Logger';
+import { ErrorSeverity, ErrorType, TreeSitterError } from '../types/errors';
+import { ErrorHandler } from '../errors/ErrorHandler';
+import { RecoveryStrategy } from '../errors/RecoveryStrategy';
+import { log } from '../utils/Logger';
 
 /**
  * 全局错误处理中间件

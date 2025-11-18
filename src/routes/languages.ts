@@ -3,10 +3,10 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { TreeSitterService } from '@/core/TreeSitterService';
-import { createLanguagesController } from '@/controllers/languagesController';
-import { validateRequest } from '@/middleware/validation';
-import { log } from '@/utils/Logger';
+import { TreeSitterService } from '../core/TreeSitterService';
+import { createLanguagesController } from '../controllers/languagesController';
+import { validateRequest } from '../middleware/validation';
+import { log } from '../utils/Logger';
 
 /**
  * 创建语言列表路由

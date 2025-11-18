@@ -1,6 +1,6 @@
 import { LanguageManager } from '../LanguageManager';
-import { SupportedLanguage } from '@/types/treeSitter';
-import { TreeSitterError, ErrorType, ErrorSeverity } from '@/types/errors';
+import { SupportedLanguage } from '../../types/treeSitter';
+import { TreeSitterError, ErrorType, ErrorSeverity } from '../../types/errors';
 
 describe('LanguageManager', () => {
   let languageManager: LanguageManager;

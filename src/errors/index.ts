@@ -14,7 +14,7 @@ export {
   MemoryStatus,
   CleanupResult,
   HealthStatus,
-} from '@/types/errors';
+} from '../types/errors';
 
 // 错误处理器
 export { ErrorHandler } from './ErrorHandler';

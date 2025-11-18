@@ -4,8 +4,8 @@
 
 import { Request, Response } from 'express';
 import { createParseController } from '../parseController';
-import { TreeSitterService } from '@/core/TreeSitterService';
-import { ParseRequest, ParseResult } from '@/types/api';
+import { TreeSitterService } from '../../core/TreeSitterService';
+import { ParseRequest, ParseResult } from '../../types/api';
 
 // 模拟 TreeSitterService
 const mockTreeSitterService = {

@@ -3,9 +3,9 @@
  */
 
 import { Request, Response } from 'express';
-import { TreeSitterService } from '@/core/TreeSitterService';
-import { ParseRequest, ParseResult, ApiResponse } from '@/types/api';
-import { log } from '@/utils/Logger';
+import { TreeSitterService } from '../core/TreeSitterService';
+import { ParseRequest, ParseResult, ApiResponse } from '../types/api';
+import { log } from '../utils/Logger';
 
 /**
  * 创建解析控制器

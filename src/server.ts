@@ -5,20 +5,20 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-import { ServerConfig } from '@/config/server';
-import { TreeSitterService } from '@/core/TreeSitterService';
-import { MemoryMonitor } from '@/core/MemoryMonitor';
-import { ResourceCleaner } from '@/core/ResourceCleaner';
-import { ErrorHandler } from '@/errors/ErrorHandler';
-import { RecoveryStrategy } from '@/errors/RecoveryStrategy';
-import { globalErrorHandler } from '@/middleware/globalErrorHandler';
-import { resourceGuard } from '@/middleware/resourceGuard';
-import { log, logger } from '@/utils/Logger';
+import { ServerConfig } from './config/server';
+import { TreeSitterService } from './core/TreeSitterService';
+import { MemoryMonitor } from './core/MemoryMonitor';
+import { ResourceCleaner } from './core/ResourceCleaner';
+import { ErrorHandler } from './errors/ErrorHandler';
+import { RecoveryStrategy } from './errors/RecoveryStrategy';
+import { globalErrorHandler } from './middleware/globalErrorHandler';
+import { resourceGuard } from './middleware/resourceGuard';
+import { log, logger } from './utils/Logger';
 
 // 导入路由
-import parseRoutes from '@/routes/parse';
-import healthRoutes from '@/routes/health';
-import languagesRoutes from '@/routes/languages';
+import parseRoutes from './routes/parse';
+import healthRoutes from './routes/health';
+import languagesRoutes from './routes/languages';
 
 class TreeSitterServer {
   private app: Application;

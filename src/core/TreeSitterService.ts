@@ -6,16 +6,16 @@ import { LanguageManager } from './LanguageManager';
 import { ParserPool } from './ParserPool';
 import { MemoryMonitor } from './MemoryMonitor';
 import { ResourceCleaner } from './ResourceCleaner';
-import { ParseRequest, ParseResult, MatchResult } from '@/types/api';
+import { ParseRequest, ParseResult, MatchResult } from '../types/api';
 import {
   SupportedLanguage,
   TreeSitterTree,
   TreeSitterQuery,
-} from '@/types/treeSitter';
-import { TreeSitterError, ErrorType, ErrorSeverity } from '@/types/errors';
-import { EnvConfig } from '@/config/env';
-import { CleanupStrategy } from '@/config/memory';
-import { log } from '@/utils/Logger';
+} from '../types/treeSitter';
+import { TreeSitterError, ErrorType, ErrorSeverity } from '../types/errors';
+import { EnvConfig } from '../config/env';
+import { CleanupStrategy } from '../config/memory';
+import { log } from '../utils/Logger';
 
 // 导入Tree-sitter
 import Parser from 'tree-sitter';

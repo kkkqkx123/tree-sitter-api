@@ -3,8 +3,8 @@ import {
   ErrorSeverity,
   TreeSitterError,
   ErrorStatistics,
-} from '@/types/errors';
-import { log } from '@/utils/Logger';
+} from '../types/errors';
+import { log } from '../utils/Logger';
 
 /**
  * 错误处理器类

@@ -3,9 +3,9 @@
  */
 
 import { Request, Response } from 'express';
-import { TreeSitterService } from '@/core/TreeSitterService';
-import { ApiResponse, HealthResponse } from '@/types/api';
-import { log } from '@/utils/Logger';
+import { TreeSitterService } from '../core/TreeSitterService';
+import { ApiResponse, HealthResponse } from '../types/api';
+import { log } from '../utils/Logger';
 
 /**
  * 创建健康检查控制器

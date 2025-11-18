@@ -2,10 +2,10 @@
  * 资源清理器 - 简化的资源清理机制
  */
 
-import { CleanupStrategy } from '@/config/memory';
-import { CleanupResult } from '@/types/errors';
-import { forceGarbageCollection, getMemoryUsage } from '@/utils/memoryUtils';
-import { log } from '@/utils/Logger';
+import { CleanupStrategy } from '../config/memory';
+import { CleanupResult } from '../types/errors';
+import { forceGarbageCollection, getMemoryUsage } from '../utils/memoryUtils';
+import { log } from '../utils/Logger';
 
 export class ResourceCleaner {
   private cleanupHistory: CleanupResult[] = [];

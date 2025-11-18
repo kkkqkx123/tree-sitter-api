@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { MemoryMonitor } from '@/core/MemoryMonitor';
-import { ResourceCleaner } from '@/core/ResourceCleaner';
-import { CleanupStrategy } from '@/config/memory';
-import { log } from '@/utils/Logger';
+import { MemoryMonitor } from '../core/MemoryMonitor';
+import { ResourceCleaner } from '../core/ResourceCleaner';
+import { CleanupStrategy } from '../config/memory';
+import { log } from '../utils/Logger';
 
 /**
  * 资源保护中间件配置

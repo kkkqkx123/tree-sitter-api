@@ -3,10 +3,10 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { ParseRequest } from '@/types/api';
-import { TreeSitterError, ErrorType, ErrorSeverity } from '@/types/errors';
-import { EnvConfig } from '@/config/env';
-import { log } from '@/utils/Logger';
+import { ParseRequest } from '../types/api';
+import { TreeSitterError, ErrorType, ErrorSeverity } from '../types/errors';
+import { EnvConfig } from '../config/env';
+import { log } from '../utils/Logger';
 
 /**
  * 验证解析请求的中间件

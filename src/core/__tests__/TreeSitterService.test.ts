@@ -1,7 +1,7 @@
 import { TreeSitterService } from '../TreeSitterService';
-import { ParseRequest } from '@/types/api';
-import { SupportedLanguage } from '@/types/treeSitter';
-import { CleanupStrategy } from '@/config/memory';
+import { ParseRequest } from '../../types/api';
+import { SupportedLanguage } from '../../types/treeSitter';
+import { CleanupStrategy } from '../../config/memory';
 
 // Mock相关的依赖
 jest.mock('../LanguageManager', () => {

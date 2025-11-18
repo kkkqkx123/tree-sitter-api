@@ -2,9 +2,9 @@
  * 语言管理器 - 负责管理和加载各种编程语言的Tree-sitter解析器
  */
 
-import { SupportedLanguage, LanguageModule } from '@/types/treeSitter';
-import { TreeSitterError, ErrorType, ErrorSeverity } from '@/types/errors';
-import { log } from '@/utils/Logger';
+import { SupportedLanguage, LanguageModule } from '../types/treeSitter';
+import { TreeSitterError, ErrorType, ErrorSeverity } from '../types/errors';
+import { log } from '../utils/Logger';
 
 export class LanguageManager {
   private languageModules: Map<SupportedLanguage, LanguageModule> = new Map();

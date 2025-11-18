@@ -9,9 +9,9 @@ import {
   errorLogger,
   notFoundHandler,
 } from '../globalErrorHandler';
-import { ErrorHandler } from '@/errors/ErrorHandler';
-import { RecoveryStrategy } from '@/errors/RecoveryStrategy';
-import { TreeSitterError, ErrorType, ErrorSeverity } from '@/types/errors';
+import { ErrorHandler } from '../../errors/ErrorHandler';
+import { RecoveryStrategy } from '../../errors/RecoveryStrategy';
+import { TreeSitterError, ErrorType, ErrorSeverity } from '../../types/errors';
 
 // 模拟 ErrorHandler
 const mockErrorHandler = {

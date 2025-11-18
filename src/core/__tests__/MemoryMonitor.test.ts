@@ -1,5 +1,5 @@
 import { MemoryMonitor } from '../MemoryMonitor';
-import { MemoryTrend } from '@/config/memory';
+import { MemoryTrend } from '../../config/memory';
 
 // Mock the memory utilities
 jest.mock('@/utils/memoryUtils', () => ({

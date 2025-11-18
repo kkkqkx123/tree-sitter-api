@@ -3,9 +3,9 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { TreeSitterService } from '@/core/TreeSitterService';
-import { createHealthController } from '@/controllers/healthController';
-import { log } from '@/utils/Logger';
+import { TreeSitterService } from '../core/TreeSitterService';
+import { createHealthController } from '../controllers/healthController';
+import { log } from '../utils/Logger';
 
 /**
  * 创建健康检查路由

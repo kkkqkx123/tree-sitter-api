@@ -3,19 +3,19 @@
  */
 
 import express from 'express';
-import { ErrorHandler } from '@/errors/ErrorHandler';
-import { RecoveryStrategy } from '@/errors/RecoveryStrategy';
-import { MemoryMonitor } from '@/core/MemoryMonitor';
-import { ResourceCleaner } from '@/core/ResourceCleaner';
+import { ErrorHandler } from '../errors/ErrorHandler';
+import { RecoveryStrategy } from '../errors/RecoveryStrategy';
+import { MemoryMonitor } from '../core/MemoryMonitor';
+import { ResourceCleaner } from '../core/ResourceCleaner';
 import {
   globalErrorHandler,
   resourceGuard,
   errorLogger,
   asyncErrorHandler,
   healthCheck,
-} from '@/middleware';
-import { TreeSitterService } from '@/core/TreeSitterService';
-import { ErrorSeverity, ErrorType, TreeSitterError } from '@/types/errors';
+} from '../middleware';
+import { TreeSitterService } from '../core/TreeSitterService';
+import { ErrorSeverity, ErrorType, TreeSitterError } from '../types/errors';
 
 /**
  * 创建Express应用并配置错误处理

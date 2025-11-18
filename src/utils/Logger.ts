@@ -5,7 +5,7 @@
 
 import { FileWriter } from './FileWriter';
 import { LogRotator } from './LogRotator';
-import { LoggerConfig, getLoggerConfig } from '@/config/logging';
+import { LoggerConfig, getLoggerConfig } from '../config/logging';
 
 export enum LogLevel {
   DEBUG = 0,

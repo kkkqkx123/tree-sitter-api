@@ -6,10 +6,10 @@ import {
   MemoryConfig,
   MemoryTrend,
   refreshMemoryConfig,
-} from '@/config/memory';
-import { MemoryStatus } from '@/types/errors';
-import { forceGarbageCollection, getMemoryUsage } from '@/utils/memoryUtils';
-import { log } from '@/utils/Logger';
+} from '../config/memory';
+import { MemoryStatus } from '../types/errors';
+import { forceGarbageCollection, getMemoryUsage } from '../utils/memoryUtils';
+import { log } from '../utils/Logger';
 
 export class MemoryMonitor {
   private lastCleanup = 0;

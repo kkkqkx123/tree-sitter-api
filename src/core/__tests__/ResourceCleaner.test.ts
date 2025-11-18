@@ -1,5 +1,5 @@
 import { ResourceCleaner } from '../ResourceCleaner';
-import { CleanupStrategy } from '@/config/memory';
+import { CleanupStrategy } from '../../config/memory';
 
 // Mock的parserPool
 const mockParserPool = {

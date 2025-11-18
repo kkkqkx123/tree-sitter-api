@@ -9,10 +9,10 @@ import {
   rateLimiter,
   healthCheck,
 } from '../resourceGuard';
-import { MemoryMonitor } from '@/core/MemoryMonitor';
-import { ResourceCleaner } from '@/core/ResourceCleaner';
-import { CleanupStrategy } from '@/config/memory';
-import { MemoryStatus } from '@/types/errors';
+import { MemoryMonitor } from '../../core/MemoryMonitor';
+import { ResourceCleaner } from '../../core/ResourceCleaner';
+import { CleanupStrategy } from '../../config/memory';
+import { MemoryStatus } from '../../types/errors';
 
 // 模拟 MemoryMonitor
 const mockMemoryMonitor = {

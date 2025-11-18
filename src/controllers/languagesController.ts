@@ -3,10 +3,10 @@
  */
 
 import { Request, Response } from 'express';
-import { TreeSitterService } from '@/core/TreeSitterService';
-import { ApiResponse, LanguagesResponse } from '@/types/api';
-import { SupportedLanguage } from '@/types/treeSitter';
-import { log } from '@/utils/Logger';
+import { TreeSitterService } from '../core/TreeSitterService';
+import { ApiResponse, LanguagesResponse } from '../types/api';
+import { SupportedLanguage } from '../types/treeSitter';
+import { log } from '../utils/Logger';
 
 /**
  * 创建语言列表控制器

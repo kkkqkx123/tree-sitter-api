@@ -4,10 +4,10 @@
 
 import { Request, Response } from 'express';
 import { createHealthController } from '../healthController';
-import { TreeSitterService } from '@/core/TreeSitterService';
-import { SupportedLanguage } from '@/types/treeSitter';
-import { MemoryStatus, CleanupResult } from '@/types/errors';
-import { MemoryTrend } from '@/config/memory';
+import { TreeSitterService } from '../../core/TreeSitterService';
+import { SupportedLanguage } from '../../types/treeSitter';
+import { MemoryStatus, CleanupResult } from '../../types/errors';
+import { MemoryTrend } from '../../config/memory';
 
 // 模拟 TreeSitterService
 const mockTreeSitterService = {

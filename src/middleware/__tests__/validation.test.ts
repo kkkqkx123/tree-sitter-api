@@ -10,9 +10,9 @@ import {
   ConcurrencyLimiter,
   defaultConcurrencyLimiter,
 } from '../validation';
-import { ParseRequest } from '@/types/api';
-import { TreeSitterError, ErrorType, ErrorSeverity } from '@/types/errors';
-import { EnvConfig } from '@/config/env';
+import { ParseRequest } from '../../types/api';
+import { TreeSitterError, ErrorType, ErrorSeverity } from '../../types/errors';
+import { EnvConfig } from '../../config/env';
 
 // 模拟 Logger
 jest.mock('@/utils/Logger', () => ({

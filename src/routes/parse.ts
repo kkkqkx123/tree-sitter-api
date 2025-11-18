@@ -3,14 +3,14 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { TreeSitterService } from '@/core/TreeSitterService';
-import { createParseController } from '@/controllers/parseController';
+import { TreeSitterService } from '../core/TreeSitterService';
+import { createParseController } from '../controllers/parseController';
 import {
   validateParseRequest,
   requestSizeLimit,
   defaultConcurrencyLimiter,
-} from '@/middleware/validation';
-import { log } from '@/utils/Logger';
+} from '../middleware/validation';
+import { log } from '../utils/Logger';
 
 /**
  * 创建解析路由

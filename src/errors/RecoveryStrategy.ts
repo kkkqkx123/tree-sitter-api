@@ -1,7 +1,7 @@
-import { ErrorType, TreeSitterError, RecoveryResult } from '@/types/errors';
-import { ResourceCleaner } from '@/core/ResourceCleaner';
-import { MemoryMonitor } from '@/core/MemoryMonitor';
-import { CleanupStrategy } from '@/config/memory';
+import { ErrorType, TreeSitterError, RecoveryResult } from '../types/errors';
+import { ResourceCleaner } from '../core/ResourceCleaner';
+import { MemoryMonitor } from '../core/MemoryMonitor';
+import { CleanupStrategy } from '../config/memory';
 
 /**
  * 简化的错误恢复策略类

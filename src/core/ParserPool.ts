@@ -3,9 +3,9 @@
  */
 
 import Parser from 'tree-sitter';
-import { SupportedLanguage } from '@/types/treeSitter';
-import { EnvConfig } from '@/config/env';
-import { log } from '@/utils/Logger';
+import { SupportedLanguage } from '../types/treeSitter';
+import { EnvConfig } from '../config/env';
+import { log } from '../utils/Logger';
 
 export class ParserPool {
   private pools: Map<SupportedLanguage, Parser[]> = new Map();
