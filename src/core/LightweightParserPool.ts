@@ -5,6 +5,7 @@
 import Parser from 'tree-sitter';
 import { SupportedLanguage } from '@/types/treeSitter';
 import { EnvConfig } from '@/config/env';
+import { log } from '@/utils/Logger';
 
 export class LightweightParserPool {
   private pools: Map<SupportedLanguage, Parser[]> = new Map();
@@ -76,7 +77,7 @@ export class LightweightParserPool {
         (parser as any).delete();
       }
     } catch (error) {
-      console.warn('Failed to destroy parser:', error);
+      log.warn('LightweightParserPool', 'Failed to destroy parser:', error);
     }
   }
 
@@ -210,7 +211,7 @@ export class LightweightParserPool {
 
     // 记录清理结果
     if (timedOutParsers.length > 0) {
-      console.log(`Cleaned up ${timedOutParsers.length} timed out parsers`);
+      log.info('LightweightParserPool', `Cleaned up ${timedOutParsers.length} timed out parsers`);
     }
   }
 
@@ -224,7 +225,7 @@ export class LightweightParserPool {
         // 立即释放回池
         this.releaseParser(parser, language);
       } catch (error) {
-        console.warn(`Failed to warmup pool for ${language}:`, error);
+        log.warn('LightweightParserPool', `Failed to warmup pool for ${language}:`, error);
       }
     });
 
@@ -250,7 +251,7 @@ export class LightweightParserPool {
    * 强制回收所有解析器
    */
   emergencyCleanup(): void {
-    console.warn('Performing emergency parser pool cleanup');
+    log.warn('LightweightParserPool', 'Performing emergency parser pool cleanup');
     this.cleanup();
 
     // 强制垃圾回收

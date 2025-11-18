@@ -4,6 +4,7 @@
 
 import { SupportedLanguage, LanguageModule } from '@/types/treeSitter';
 import { TreeSitterError, ErrorType, ErrorSeverity } from '@/types/errors';
+import { log } from '@/utils/Logger';
 
 export class LanguageManager {
   private languageModules: Map<SupportedLanguage, LanguageModule> = new Map();
@@ -168,7 +169,7 @@ export class LanguageManager {
   async preloadAllLanguages(): Promise<void> {
     const promises = Array.from(this.supportedLanguages).map(lang => 
       this.preloadLanguage(lang).catch(error => {
-        console.warn(`Failed to preload ${lang}:`, error);
+        log.warn('LanguageManager', `Failed to preload ${lang}:`, error);
       })
     );
 

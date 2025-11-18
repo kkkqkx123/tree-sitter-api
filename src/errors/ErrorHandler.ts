@@ -1,4 +1,5 @@
 import { ErrorType, ErrorSeverity, TreeSitterError, ErrorStatistics } from '@/types/errors';
+import { log } from '@/utils/Logger';
 
 /**
  * 错误处理器类
@@ -141,18 +142,18 @@ export class ErrorHandler {
 
     switch (error.severity) {
       case ErrorSeverity.CRITICAL:
-        console.error(`[CRITICAL]${contextStr}`, error);
+        log.fatal('ErrorHandler', `[CRITICAL]${contextStr}`, error);
         // 可能需要触发紧急清理或重启
         break;
       case ErrorSeverity.HIGH:
-        console.error(`[HIGH]${contextStr}`, error);
+        log.error('ErrorHandler', `[HIGH]${contextStr}`, error);
         // 可能需要记录告警
         break;
       case ErrorSeverity.MEDIUM:
-        console.warn(`[MEDIUM]${contextStr}`, error);
+        log.warn('ErrorHandler', `[MEDIUM]${contextStr}`, error);
         break;
       case ErrorSeverity.LOW:
-        console.info(`[LOW]${contextStr}`, error);
+        log.info('ErrorHandler', `[LOW]${contextStr}`, error);
         break;
     }
   }

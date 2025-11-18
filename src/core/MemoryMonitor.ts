@@ -5,6 +5,7 @@
 import { MemoryConfig, MemoryTrend } from '@/config/memory';
 import { MemoryStatus } from '@/types/errors';
 import { forceGarbageCollection, getMemoryUsage } from '@/utils/memoryUtils';
+import { log } from '@/utils/Logger';
 
 export class MemoryMonitor {
   private memoryHistory: number[] = [];
@@ -31,7 +32,7 @@ export class MemoryMonitor {
       this.recordMemoryUsage();
     }, intervalMs);
 
-    console.log('Memory monitoring started');
+    log.info('MemoryMonitor', 'Memory monitoring started');
   }
 
   /**
@@ -43,7 +44,7 @@ export class MemoryMonitor {
       this.monitoringInterval = null;
     }
     this.isMonitoring = false;
-    console.log('Memory monitoring stopped');
+    log.info('MemoryMonitor', 'Memory monitoring stopped');
   }
 
   /**

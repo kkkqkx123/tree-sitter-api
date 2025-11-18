@@ -11,6 +11,7 @@ import { SupportedLanguage, TreeSitterTree, TreeSitterQuery } from '@/types/tree
 import { TreeSitterError, ErrorType, ErrorSeverity } from '@/types/errors';
 import { EnvConfig } from '@/config/env';
 import { CleanupStrategy } from '@/config/memory';
+import { log } from '@/utils/Logger';
 
 export class TreeSitterService {
   private languageManager: LanguageManager;
@@ -35,7 +36,7 @@ export class TreeSitterService {
     // 启动内存监控
     this.memoryMonitor.startMonitoring();
 
-    console.log('TreeSitterService initialized');
+    log.info('TreeSitterService', 'TreeSitterService initialized');
   }
 
   /**
@@ -60,7 +61,7 @@ export class TreeSitterService {
 
       // 记录处理时间
       const duration = Date.now() - startTime;
-      console.log(`Request processed in ${duration}ms`);
+      log.info('TreeSitterService', `Request processed in ${duration}ms`);
 
       return result;
     } catch (error) {
@@ -190,7 +191,7 @@ export class TreeSitterService {
           this.destroyQuery(query);
         }
       } catch (error) {
-        console.warn(`Query execution failed: ${error instanceof Error ? error.message : String(error)}`);
+        log.warn('TreeSitterService', `Query execution failed: ${error instanceof Error ? error.message : String(error)}`);
         // 继续处理其他查询，不中断整个请求
       }
     }
@@ -202,7 +203,7 @@ export class TreeSitterService {
    * 处理严重内存状态
    */
   private async handleCriticalMemory(): Promise<void> {
-    console.warn('Critical memory usage detected, performing emergency cleanup');
+    log.warn('TreeSitterService', 'Critical memory usage detected, performing emergency cleanup');
 
     try {
 
@@ -256,7 +257,7 @@ export class TreeSitterService {
         tree.delete();
       }
     } catch (error) {
-      console.warn('Failed to destroy tree:', error);
+      log.warn('TreeSitterService', 'Failed to destroy tree:', error);
     }
   }
 
@@ -270,7 +271,7 @@ export class TreeSitterService {
         query.delete();
       }
     } catch (error) {
-      console.warn('Failed to destroy query:', error);
+      log.warn('TreeSitterService', 'Failed to destroy query:', error);
     }
   }
 
@@ -385,7 +386,7 @@ export class TreeSitterService {
    * 紧急清理
    */
   async emergencyCleanup(): Promise<void> {
-    console.warn('Performing emergency cleanup');
+    log.warn('TreeSitterService', 'Performing emergency cleanup');
 
     // 清理所有活跃资源
     this.activeTrees.forEach(tree => this.destroyTree(tree));
@@ -405,7 +406,7 @@ export class TreeSitterService {
    * 销毁服务
    */
   destroy(): void {
-    console.log('Destroying TreeSitterService...');
+    log.info('TreeSitterService', 'Destroying TreeSitterService...');
 
     // 清理所有活跃资源
     this.activeTrees.forEach(tree => this.destroyTree(tree));
@@ -416,6 +417,6 @@ export class TreeSitterService {
     this.memoryMonitor.destroy();
     this.resourceCleaner.destroy();
 
-    console.log('TreeSitterService destroyed');
+    log.info('TreeSitterService', 'TreeSitterService destroyed');
   }
 }

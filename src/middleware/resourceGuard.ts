@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { MemoryMonitor } from '@/core/MemoryMonitor';
 import { ResourceCleaner } from '@/core/ResourceCleaner';
 import { CleanupStrategy } from '@/config/memory';
+import { log } from '@/utils/Logger';
 
 /**
  * 资源保护中间件配置
@@ -81,7 +82,7 @@ export const resourceGuard = (
 
         // 如果内存状态严重，尝试清理
         if (memoryStatus.level === 'critical') {
-          console.warn('Critical memory usage detected, attempting cleanup');
+          log.warn('ResourceGuard', 'Critical memory usage detected, attempting cleanup');
           await resourceCleaner.performCleanup(CleanupStrategy.EMERGENCY);
 
           // 再次检查内存状态
@@ -102,7 +103,7 @@ export const resourceGuard = (
 
       // 设置请求超时
       req.setTimeout(finalConfig.requestTimeout, () => {
-        console.warn(`Request timeout: ${req.method} ${req.path}`);
+        log.warn('ResourceGuard', `Request timeout: ${req.method} ${req.path}`);
         if (!res.headersSent) {
           res.status(408).json({
             success: false,
@@ -122,7 +123,7 @@ export const resourceGuard = (
         const memoryGrowth = endMemory.heapUsed - startMemory.heapUsed;
 
         if (memoryGrowth > 10 * 1024 * 1024) { // 10MB增长
-          console.warn(`High memory growth detected: ${Math.round(memoryGrowth / 1024 / 1024)}MB`);
+          log.warn('ResourceGuard', `High memory growth detected: ${Math.round(memoryGrowth / 1024 / 1024)}MB`);
 
           // 如果需要，触发清理
           const currentMemoryStatus = memoryMonitor.checkMemory();

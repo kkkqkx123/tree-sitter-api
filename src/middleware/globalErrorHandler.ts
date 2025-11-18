@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { ErrorSeverity, ErrorType, TreeSitterError } from '@/types/errors';
 import { ErrorHandler } from '@/errors/ErrorHandler';
 import { RecoveryStrategy } from '@/errors/RecoveryStrategy';
+import { log } from '@/utils/Logger';
 
 /**
  * 全局错误处理中间件
@@ -20,7 +21,7 @@ export const globalErrorHandler = (
 
     // 记录恢复结果
     if (!recoveryResult.success) {
-      console.error('Recovery failed:', recoveryResult);
+      log.error('GlobalErrorHandler', 'Recovery failed:', recoveryResult);
     }
 
     // 获取适当的HTTP状态码
@@ -108,17 +109,17 @@ export const errorLogger = (req: Request, res: Response, next: NextFunction) => 
   const start = Date.now();
 
   // 记录请求开始
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} - Request started`);
+  log.info('RequestLogger', `${req.method} ${req.path} - Request started`);
 
   // 监听响应完成事件
   res.on('finish', () => {
     const duration = Date.now() - start;
 
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} - ${res.statusCode} - ${duration}ms`);
+    log.info('RequestLogger', `${req.method} ${req.path} - ${res.statusCode} - ${duration}ms`);
 
     // 如果是错误响应，记录更多信息
     if (res.statusCode >= 400) {
-      console.error(`[ERROR] ${req.method} ${req.path} - ${res.statusCode} - ${duration}ms - ${req.ip}`);
+      log.error('RequestLogger', `${req.method} ${req.path} - ${res.statusCode} - ${duration}ms - ${req.ip}`);
     }
   });
 

@@ -5,6 +5,7 @@
 import { CleanupStrategy } from '@/config/memory';
 import { CleanupResult } from '@/types/errors';
 import { forceGarbageCollection, getMemoryUsage } from '@/utils/memoryUtils';
+import { log } from '@/utils/Logger';
 
 // 清理策略接口
 abstract class BaseCleanupStrategy {
@@ -75,7 +76,7 @@ class AggressiveCleanupStrategy extends BaseCleanupStrategy {
       }
 
     } catch (error) {
-      console.warn('Aggressive cleanup encountered error:', error);
+      log.warn('ResourceCleaner', 'Aggressive cleanup encountered error:', error);
     }
 
     const afterMemory = getMemoryUsage();
@@ -112,7 +113,7 @@ class EmergencyCleanupStrategy extends BaseCleanupStrategy {
     const beforeMemory = getMemoryUsage();
 
     try {
-      console.warn('Performing emergency cleanup...');
+      log.warn('ResourceCleaner', 'Performing emergency cleanup...');
 
       // 清理所有缓存
       if (this.languageManager) {
@@ -140,7 +141,7 @@ class EmergencyCleanupStrategy extends BaseCleanupStrategy {
       }
 
     } catch (error) {
-      console.error('Emergency cleanup failed:', error);
+      log.error('ResourceCleaner', 'Emergency cleanup failed:', error);
     }
 
     const afterMemory = getMemoryUsage();
@@ -259,13 +260,13 @@ export class ResourceCleaner {
         throw new Error(`Cleanup strategy ${strategy} not available`);
       }
 
-      console.log(`Performing ${strategy} cleanup...`);
+      log.info('ResourceCleaner', `Performing ${strategy} cleanup...`);
       const result = await cleanupStrategy.execute();
 
       // 记录清理结果
       this.recordCleanupResult(result);
 
-      console.log(`${strategy} cleanup completed: ${result.memoryFreed}MB freed in ${result.duration}ms`);
+      log.info('ResourceCleaner', `${strategy} cleanup completed: ${result.memoryFreed}MB freed in ${result.duration}ms`);
 
       return result;
     } catch (error) {
@@ -278,7 +279,7 @@ export class ResourceCleaner {
 
       this.recordCleanupResult(errorResult);
 
-      console.error(`${strategy} cleanup failed:`, error);
+      log.error('ResourceCleaner', `${strategy} cleanup failed:`, error);
 
       return errorResult;
     } finally {
