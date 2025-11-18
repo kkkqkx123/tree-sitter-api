@@ -77,7 +77,11 @@ describe('healthController', () => {
           },
         },
         languageManager: {
-          supportedLanguages: ['javascript', 'typescript', 'python'] as SupportedLanguage[],
+          supportedLanguages: [
+            'javascript',
+            'typescript',
+            'python',
+          ] as SupportedLanguage[],
           loadedLanguages: ['javascript', 'typescript'] as SupportedLanguage[],
           loadingLanguages: ['python'] as SupportedLanguage[],
           totalSupported: 3,
@@ -96,15 +100,21 @@ describe('healthController', () => {
         timestamp: '2023-01-01T00:00:00.000Z',
       };
 
-      const mockSupportedLanguages: SupportedLanguage[] = ['javascript', 'typescript', 'python'];
+      const mockSupportedLanguages: SupportedLanguage[] = [
+        'javascript',
+        'typescript',
+        'python',
+      ];
 
       mockTreeSitterService.getHealthStatus.mockReturnValue(mockHealthStatus);
-      mockTreeSitterService.getSupportedLanguages.mockReturnValue(mockSupportedLanguages);
+      mockTreeSitterService.getSupportedLanguages.mockReturnValue(
+        mockSupportedLanguages,
+      );
 
       // 执行测试
       await healthController.basicHealthCheck(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -172,12 +182,14 @@ describe('healthController', () => {
       const mockSupportedLanguages: SupportedLanguage[] = ['javascript'];
 
       mockTreeSitterService.getHealthStatus.mockReturnValue(mockHealthStatus);
-      mockTreeSitterService.getSupportedLanguages.mockReturnValue(mockSupportedLanguages);
+      mockTreeSitterService.getSupportedLanguages.mockReturnValue(
+        mockSupportedLanguages,
+      );
 
       // 执行测试
       await healthController.basicHealthCheck(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -230,12 +242,14 @@ describe('healthController', () => {
       const mockSupportedLanguages: SupportedLanguage[] = ['javascript'];
 
       mockTreeSitterService.getHealthStatus.mockReturnValue(mockHealthStatus);
-      mockTreeSitterService.getSupportedLanguages.mockReturnValue(mockSupportedLanguages);
+      mockTreeSitterService.getSupportedLanguages.mockReturnValue(
+        mockSupportedLanguages,
+      );
 
       // 执行测试
       await healthController.basicHealthCheck(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -251,7 +265,7 @@ describe('healthController', () => {
       // 执行测试
       await healthController.basicHealthCheck(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -313,7 +327,7 @@ describe('healthController', () => {
       // 执行测试
       await healthController.basicHealthCheck(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -348,8 +362,15 @@ describe('healthController', () => {
             },
           },
           languageManager: {
-            supportedLanguages: ['javascript', 'typescript', 'python'] as SupportedLanguage[],
-            loadedLanguages: ['javascript', 'typescript'] as SupportedLanguage[],
+            supportedLanguages: [
+              'javascript',
+              'typescript',
+              'python',
+            ] as SupportedLanguage[],
+            loadedLanguages: [
+              'javascript',
+              'typescript',
+            ] as SupportedLanguage[],
             loadingLanguages: ['python'] as SupportedLanguage[],
             totalSupported: 3,
             totalLoaded: 2,
@@ -386,6 +407,21 @@ describe('healthController', () => {
           },
           recommendations: ['Memory usage is normal'],
           alerts: [],
+          config: {
+            thresholds: {
+              WARNING: 300,
+              CRITICAL: 450,
+              MAXIMUM: 500,
+            },
+            limits: {
+              MAX_REQUEST_SIZE: 5 * 1024 * 1024,
+              MAX_CODE_LENGTH: 100 * 1024,
+              MAX_CONCURRENT_REQUESTS: 10,
+              PARSER_POOL_SIZE: 3,
+              QUERY_TIMEOUT: 30000,
+              MEMORY_HISTORY_SIZE: 10,
+            },
+          },
         },
         cleanup: {
           totalCleanups: 5,
@@ -427,7 +463,7 @@ describe('healthController', () => {
       // 执行测试
       await healthController.detailedHealthCheck(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -454,7 +490,7 @@ describe('healthController', () => {
       // 执行测试
       await healthController.detailedHealthCheck(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -526,7 +562,7 @@ describe('healthController', () => {
       // 执行测试
       await healthController.memoryUsage(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -563,7 +599,7 @@ describe('healthController', () => {
       // 执行测试
       await healthController.memoryUsage(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -625,7 +661,7 @@ describe('healthController', () => {
       // 执行测试
       await healthController.serviceStats(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -657,7 +693,7 @@ describe('healthController', () => {
       // 执行测试
       await healthController.serviceStats(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -688,11 +724,13 @@ describe('healthController', () => {
       // 执行测试
       await healthController.triggerCleanup(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
-      expect(mockTreeSitterService.performCleanup).toHaveBeenCalledWith('basic');
+      expect(mockTreeSitterService.performCleanup).toHaveBeenCalledWith(
+        'basic',
+      );
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: true,
@@ -721,22 +759,26 @@ describe('healthController', () => {
       // 执行测试
       await healthController.triggerCleanup(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
-      expect(mockTreeSitterService.performCleanup).toHaveBeenCalledWith('basic');
+      expect(mockTreeSitterService.performCleanup).toHaveBeenCalledWith(
+        'basic',
+      );
       expect(mockResponse.status).toHaveBeenCalledWith(200);
     });
 
     it('应该处理错误情况', async () => {
       // 准备测试数据
-      mockTreeSitterService.performCleanup.mockRejectedValue(new Error('Cleanup error'));
+      mockTreeSitterService.performCleanup.mockRejectedValue(
+        new Error('Cleanup error'),
+      );
 
       // 执行测试
       await healthController.triggerCleanup(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -754,7 +796,7 @@ describe('healthController', () => {
       // 执行测试
       await healthController.resetStats(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -778,7 +820,7 @@ describe('healthController', () => {
       // 执行测试
       await healthController.resetStats(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果

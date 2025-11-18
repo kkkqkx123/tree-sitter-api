@@ -5,7 +5,7 @@
 import { MatchResult } from './api';
 
 // 支持的编程语言
-export type SupportedLanguage = 
+export type SupportedLanguage =
   | 'javascript'
   | 'typescript'
   | 'python'

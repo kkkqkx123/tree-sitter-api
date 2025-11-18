@@ -15,10 +15,10 @@ const mockLanguageManager = {
 // Mock的内存工具函数
 jest.mock('@/utils/memoryUtils', () => ({
   getMemoryUsage: jest.fn(() => ({
-    rss: 50 * 1024 * 1024,      // 50 MB
+    rss: 50 * 1024 * 1024, // 50 MB
     heapTotal: 30 * 1024 * 1024, // 30 MB
-    heapUsed: 20 * 1024 * 1024,  // 20 MB
-    external: 5 * 1024 * 1024,   // 5 MB
+    heapUsed: 20 * 1024 * 1024, // 20 MB
+    external: 5 * 1024 * 1024, // 5 MB
   })),
   forceGarbageCollection: jest.fn(() => true),
 }));
@@ -32,7 +32,7 @@ describe('ResourceCleaner', () => {
 
   afterEach(() => {
     resourceCleaner.destroy();
- });
+  });
 
   describe('constructor', () => {
     it('should initialize correctly', () => {
@@ -48,19 +48,23 @@ describe('ResourceCleaner', () => {
 
     it('should set language manager', () => {
       resourceCleaner.setLanguageManager(mockLanguageManager);
-      expect(() => resourceCleaner.setLanguageManager(mockLanguageManager)).not.toThrow();
+      expect(() =>
+        resourceCleaner.setLanguageManager(mockLanguageManager),
+      ).not.toThrow();
     });
   });
 
   describe('performCleanup', () => {
     it('should perform basic cleanup', async () => {
-      const result = await resourceCleaner.performCleanup(CleanupStrategy.BASIC);
-      
+      const result = await resourceCleaner.performCleanup(
+        CleanupStrategy.BASIC,
+      );
+
       expect(result).toHaveProperty('strategy');
       expect(result).toHaveProperty('memoryFreed');
       expect(result).toHaveProperty('success');
       expect(result).toHaveProperty('duration');
-      
+
       expect(result.strategy).toBe(CleanupStrategy.BASIC);
       expect(typeof result.memoryFreed).toBe('number');
       expect(typeof result.success).toBe('boolean');
@@ -69,13 +73,15 @@ describe('ResourceCleaner', () => {
 
     it('should perform aggressive cleanup', async () => {
       resourceCleaner.setParserPool(mockParserPool);
-      const result = await resourceCleaner.performCleanup(CleanupStrategy.AGGRESSIVE);
-      
+      const result = await resourceCleaner.performCleanup(
+        CleanupStrategy.AGGRESSIVE,
+      );
+
       expect(result).toHaveProperty('strategy');
       expect(result).toHaveProperty('memoryFreed');
       expect(result).toHaveProperty('success');
       expect(result).toHaveProperty('duration');
-      
+
       expect(result.strategy).toBe(CleanupStrategy.AGGRESSIVE);
       expect(typeof result.memoryFreed).toBe('number');
       expect(typeof result.success).toBe('boolean');
@@ -85,13 +91,15 @@ describe('ResourceCleaner', () => {
     it('should perform emergency cleanup', async () => {
       resourceCleaner.setParserPool(mockParserPool);
       resourceCleaner.setLanguageManager(mockLanguageManager);
-      const result = await resourceCleaner.performCleanup(CleanupStrategy.EMERGENCY);
-      
+      const result = await resourceCleaner.performCleanup(
+        CleanupStrategy.EMERGENCY,
+      );
+
       expect(result).toHaveProperty('strategy');
       expect(result).toHaveProperty('memoryFreed');
       expect(result).toHaveProperty('success');
       expect(result).toHaveProperty('duration');
-      
+
       expect(result.strategy).toBe(CleanupStrategy.EMERGENCY);
       expect(typeof result.memoryFreed).toBe('number');
       expect(typeof result.success).toBe('boolean');
@@ -100,7 +108,9 @@ describe('ResourceCleaner', () => {
 
     it('should handle cleanup errors gracefully', async () => {
       // 测试错误处理
-      const result = await resourceCleaner.performCleanup(CleanupStrategy.BASIC);
+      const result = await resourceCleaner.performCleanup(
+        CleanupStrategy.BASIC,
+      );
       expect(typeof result.success).toBe('boolean');
     });
   });
@@ -108,7 +118,7 @@ describe('ResourceCleaner', () => {
   describe('getCleanupStats', () => {
     it('should return cleanup statistics', () => {
       const stats = resourceCleaner.getCleanupStats();
-      
+
       expect(stats).toHaveProperty('totalCleanups');
       expect(stats).toHaveProperty('successfulCleanups');
       expect(stats).toHaveProperty('failedCleanups');
@@ -116,7 +126,7 @@ describe('ResourceCleaner', () => {
       expect(stats).toHaveProperty('averageCleanupTime');
       expect(stats).toHaveProperty('strategyStats');
       expect(stats).toHaveProperty('recentCleanups');
-      
+
       expect(typeof stats.totalCleanups).toBe('number');
       expect(typeof stats.successfulCleanups).toBe('number');
       expect(typeof stats.failedCleanups).toBe('number');
@@ -143,10 +153,10 @@ describe('ResourceCleaner', () => {
       // 执行一次清理来添加历史记录
       const initialStats = resourceCleaner.getCleanupStats();
       expect(typeof initialStats.totalCleanups).toBe('number');
-      
+
       // 清理历史记录
       resourceCleaner.clearHistory();
-      
+
       const finalStats = resourceCleaner.getCleanupStats();
       expect(typeof finalStats.totalCleanups).toBe('number');
     });
@@ -154,13 +164,13 @@ describe('ResourceCleaner', () => {
     it('should reset cleaner', () => {
       // 执行一些操作来添加历史记录
       resourceCleaner.clearHistory(); // 确保初始状态是干净的
-      
+
       const initialStats = resourceCleaner.getCleanupStats();
       expect(typeof initialStats.totalCleanups).toBe('number');
-      
+
       // 重置清理器
       resourceCleaner.reset();
-      
+
       const finalStats = resourceCleaner.getCleanupStats();
       expect(typeof finalStats.totalCleanups).toBe('number');
     });
@@ -171,10 +181,10 @@ describe('ResourceCleaner', () => {
       // 添加一些历史记录
       const initialStats = resourceCleaner.getCleanupStats();
       expect(typeof initialStats.totalCleanups).toBe('number');
-      
+
       // 销毁清理器
       resourceCleaner.destroy();
-      
+
       // 验证清理器被正确销毁
       const finalStats = resourceCleaner.getCleanupStats();
       expect(typeof finalStats.totalCleanups).toBe('number');
@@ -185,7 +195,7 @@ describe('ResourceCleaner', () => {
     it('should work with parser pool', () => {
       // 设置parser pool
       resourceCleaner.setParserPool(mockParserPool);
-      
+
       // 验证方法正常工作
       expect(() => resourceCleaner.setParserPool(mockParserPool)).not.toThrow();
     });
@@ -193,9 +203,11 @@ describe('ResourceCleaner', () => {
     it('should work with language manager', () => {
       // 设置语言管理器
       resourceCleaner.setLanguageManager(mockLanguageManager);
-      
+
       // 验证方法正常工作
-      expect(() => resourceCleaner.setLanguageManager(mockLanguageManager)).not.toThrow();
+      expect(() =>
+        resourceCleaner.setLanguageManager(mockLanguageManager),
+      ).not.toThrow();
     });
   });
 });

@@ -64,12 +64,14 @@ describe('languagesController', () => {
         'ruby',
       ];
 
-      mockTreeSitterService.getSupportedLanguages.mockReturnValue(mockSupportedLanguages);
+      mockTreeSitterService.getSupportedLanguages.mockReturnValue(
+        mockSupportedLanguages,
+      );
 
       // 执行测试
       await languagesController.getSupportedLanguages(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -103,7 +105,7 @@ describe('languagesController', () => {
       // 执行测试
       await languagesController.getSupportedLanguages(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -123,7 +125,7 @@ describe('languagesController', () => {
       // 执行测试
       await languagesController.getSupportedLanguages(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -135,8 +137,13 @@ describe('languagesController', () => {
   describe('getLanguageInfo', () => {
     it('应该返回JavaScript语言信息', async () => {
       // 准备测试数据
-      const mockSupportedLanguages: SupportedLanguage[] = ['javascript', 'typescript'];
-      mockTreeSitterService.getSupportedLanguages.mockReturnValue(mockSupportedLanguages);
+      const mockSupportedLanguages: SupportedLanguage[] = [
+        'javascript',
+        'typescript',
+      ];
+      mockTreeSitterService.getSupportedLanguages.mockReturnValue(
+        mockSupportedLanguages,
+      );
 
       mockRequest.params = {
         language: 'javascript',
@@ -145,7 +152,7 @@ describe('languagesController', () => {
       // 执行测试
       await languagesController.getLanguageInfo(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -166,7 +173,9 @@ describe('languagesController', () => {
     it('应该返回TypeScript语言信息', async () => {
       // 准备测试数据
       const mockSupportedLanguages: SupportedLanguage[] = ['typescript'];
-      mockTreeSitterService.getSupportedLanguages.mockReturnValue(mockSupportedLanguages);
+      mockTreeSitterService.getSupportedLanguages.mockReturnValue(
+        mockSupportedLanguages,
+      );
 
       mockRequest.params = {
         language: 'typescript',
@@ -175,7 +184,7 @@ describe('languagesController', () => {
       // 执行测试
       await languagesController.getLanguageInfo(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -196,7 +205,9 @@ describe('languagesController', () => {
     it('应该返回Python语言信息', async () => {
       // 准备测试数据
       const mockSupportedLanguages: SupportedLanguage[] = ['python'];
-      mockTreeSitterService.getSupportedLanguages.mockReturnValue(mockSupportedLanguages);
+      mockTreeSitterService.getSupportedLanguages.mockReturnValue(
+        mockSupportedLanguages,
+      );
 
       mockRequest.params = {
         language: 'python',
@@ -205,7 +216,7 @@ describe('languagesController', () => {
       // 执行测试
       await languagesController.getLanguageInfo(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -226,7 +237,9 @@ describe('languagesController', () => {
     it('应该处理不支持的语言', async () => {
       // 准备测试数据
       const mockSupportedLanguages: SupportedLanguage[] = ['javascript'];
-      mockTreeSitterService.getSupportedLanguages.mockReturnValue(mockSupportedLanguages);
+      mockTreeSitterService.getSupportedLanguages.mockReturnValue(
+        mockSupportedLanguages,
+      );
 
       mockRequest.params = {
         language: 'unsupported',
@@ -235,7 +248,7 @@ describe('languagesController', () => {
       // 执行测试
       await languagesController.getLanguageInfo(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -254,7 +267,7 @@ describe('languagesController', () => {
       // 执行测试
       await languagesController.getLanguageInfo(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -279,7 +292,7 @@ describe('languagesController', () => {
       // 执行测试
       await languagesController.getLanguageInfo(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -295,8 +308,14 @@ describe('languagesController', () => {
   describe('preloadLanguage', () => {
     it('应该预加载所有语言', async () => {
       // 准备测试数据
-      const mockSupportedLanguages: SupportedLanguage[] = ['javascript', 'typescript', 'python'];
-      mockTreeSitterService.getSupportedLanguages.mockReturnValue(mockSupportedLanguages);
+      const mockSupportedLanguages: SupportedLanguage[] = [
+        'javascript',
+        'typescript',
+        'python',
+      ];
+      mockTreeSitterService.getSupportedLanguages.mockReturnValue(
+        mockSupportedLanguages,
+      );
       mockTreeSitterService.preloadLanguages.mockResolvedValue();
 
       mockRequest.body = {};
@@ -304,11 +323,13 @@ describe('languagesController', () => {
       // 执行测试
       await languagesController.preloadLanguage(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
-      expect(mockTreeSitterService.preloadLanguages).toHaveBeenCalledWith(mockSupportedLanguages);
+      expect(mockTreeSitterService.preloadLanguages).toHaveBeenCalledWith(
+        mockSupportedLanguages,
+      );
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: true,
@@ -324,10 +345,19 @@ describe('languagesController', () => {
 
     it('应该预加载指定的语言', async () => {
       // 准备测试数据
-      const mockSupportedLanguages: SupportedLanguage[] = ['javascript', 'typescript', 'python'];
-      const languagesToPreload: SupportedLanguage[] = ['javascript', 'typescript'];
-      
-      mockTreeSitterService.getSupportedLanguages.mockReturnValue(mockSupportedLanguages);
+      const mockSupportedLanguages: SupportedLanguage[] = [
+        'javascript',
+        'typescript',
+        'python',
+      ];
+      const languagesToPreload: SupportedLanguage[] = [
+        'javascript',
+        'typescript',
+      ];
+
+      mockTreeSitterService.getSupportedLanguages.mockReturnValue(
+        mockSupportedLanguages,
+      );
       mockTreeSitterService.preloadLanguages.mockResolvedValue();
 
       mockRequest.body = {
@@ -337,11 +367,13 @@ describe('languagesController', () => {
       // 执行测试
       await languagesController.preloadLanguage(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
-      expect(mockTreeSitterService.preloadLanguages).toHaveBeenCalledWith(languagesToPreload);
+      expect(mockTreeSitterService.preloadLanguages).toHaveBeenCalledWith(
+        languagesToPreload,
+      );
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: true,
@@ -357,8 +389,13 @@ describe('languagesController', () => {
 
     it('应该处理不支持的语言', async () => {
       // 准备测试数据
-      const mockSupportedLanguages: SupportedLanguage[] = ['javascript', 'typescript'];
-      mockTreeSitterService.getSupportedLanguages.mockReturnValue(mockSupportedLanguages);
+      const mockSupportedLanguages: SupportedLanguage[] = [
+        'javascript',
+        'typescript',
+      ];
+      mockTreeSitterService.getSupportedLanguages.mockReturnValue(
+        mockSupportedLanguages,
+      );
 
       mockRequest.body = {
         languages: ['javascript', 'unsupported'],
@@ -367,7 +404,7 @@ describe('languagesController', () => {
       // 执行测试
       await languagesController.preloadLanguage(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -388,7 +425,7 @@ describe('languagesController', () => {
       // 执行测试
       await languagesController.preloadLanguage(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -402,8 +439,12 @@ describe('languagesController', () => {
 
     it('应该处理服务错误', async () => {
       // 准备测试数据
-      mockTreeSitterService.getSupportedLanguages.mockReturnValue(['javascript']);
-      mockTreeSitterService.preloadLanguages.mockRejectedValue(new Error('Service error'));
+      mockTreeSitterService.getSupportedLanguages.mockReturnValue([
+        'javascript',
+      ]);
+      mockTreeSitterService.preloadLanguages.mockRejectedValue(
+        new Error('Service error'),
+      );
 
       mockRequest.body = {
         languages: ['javascript'],
@@ -412,7 +453,7 @@ describe('languagesController', () => {
       // 执行测试
       await languagesController.preloadLanguage(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -429,7 +470,9 @@ describe('languagesController', () => {
     it('应该返回JavaScript查询示例', async () => {
       // 准备测试数据
       const mockSupportedLanguages: SupportedLanguage[] = ['javascript'];
-      mockTreeSitterService.getSupportedLanguages.mockReturnValue(mockSupportedLanguages);
+      mockTreeSitterService.getSupportedLanguages.mockReturnValue(
+        mockSupportedLanguages,
+      );
 
       mockRequest.params = {
         language: 'javascript',
@@ -438,7 +481,7 @@ describe('languagesController', () => {
       // 执行测试
       await languagesController.getLanguageExamples(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -451,12 +494,14 @@ describe('languagesController', () => {
             {
               name: 'Function declarations',
               description: 'Find all function declarations',
-              query: '(function_declaration name: (identifier) @name) @function',
+              query:
+                '(function_declaration name: (identifier) @name) @function',
             },
             {
               name: 'Variable declarations',
               description: 'Find all variable declarations',
-              query: '(variable_declarator name: (identifier) @name value: _ @value) @variable',
+              query:
+                '(variable_declarator name: (identifier) @name value: _ @value) @variable',
             },
             {
               name: 'Class declarations',
@@ -472,7 +517,9 @@ describe('languagesController', () => {
     it('应该返回TypeScript查询示例', async () => {
       // 准备测试数据
       const mockSupportedLanguages: SupportedLanguage[] = ['typescript'];
-      mockTreeSitterService.getSupportedLanguages.mockReturnValue(mockSupportedLanguages);
+      mockTreeSitterService.getSupportedLanguages.mockReturnValue(
+        mockSupportedLanguages,
+      );
 
       mockRequest.params = {
         language: 'typescript',
@@ -481,7 +528,7 @@ describe('languagesController', () => {
       // 执行测试
       await languagesController.getLanguageExamples(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -494,12 +541,14 @@ describe('languagesController', () => {
             {
               name: 'Interface declarations',
               description: 'Find all interface declarations',
-              query: '(interface_declaration name: (type_identifier) @name) @interface',
+              query:
+                '(interface_declaration name: (type_identifier) @name) @interface',
             },
             {
               name: 'Type aliases',
               description: 'Find all type aliases',
-              query: '(type_alias_declaration name: (type_identifier) @name) @type_alias',
+              query:
+                '(type_alias_declaration name: (type_identifier) @name) @type_alias',
             },
           ],
         },
@@ -510,7 +559,9 @@ describe('languagesController', () => {
     it('应该返回Python查询示例', async () => {
       // 准备测试数据
       const mockSupportedLanguages: SupportedLanguage[] = ['python'];
-      mockTreeSitterService.getSupportedLanguages.mockReturnValue(mockSupportedLanguages);
+      mockTreeSitterService.getSupportedLanguages.mockReturnValue(
+        mockSupportedLanguages,
+      );
 
       mockRequest.params = {
         language: 'python',
@@ -519,7 +570,7 @@ describe('languagesController', () => {
       // 执行测试
       await languagesController.getLanguageExamples(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -553,7 +604,9 @@ describe('languagesController', () => {
     it('应该处理不支持的语言', async () => {
       // 准备测试数据
       const mockSupportedLanguages: SupportedLanguage[] = ['javascript'];
-      mockTreeSitterService.getSupportedLanguages.mockReturnValue(mockSupportedLanguages);
+      mockTreeSitterService.getSupportedLanguages.mockReturnValue(
+        mockSupportedLanguages,
+      );
 
       mockRequest.params = {
         language: 'unsupported',
@@ -562,7 +615,7 @@ describe('languagesController', () => {
       // 执行测试
       await languagesController.getLanguageExamples(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -581,7 +634,7 @@ describe('languagesController', () => {
       // 执行测试
       await languagesController.getLanguageExamples(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -606,7 +659,7 @@ describe('languagesController', () => {
       // 执行测试
       await languagesController.getLanguageExamples(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -621,7 +674,9 @@ describe('languagesController', () => {
     it('应该返回空数组对于没有示例的语言', async () => {
       // 准备测试数据
       const mockSupportedLanguages: SupportedLanguage[] = ['javascript'];
-      mockTreeSitterService.getSupportedLanguages.mockReturnValue(mockSupportedLanguages);
+      mockTreeSitterService.getSupportedLanguages.mockReturnValue(
+        mockSupportedLanguages,
+      );
 
       // 修改请求参数为一个不存在的语言，但绕过支持检查
       mockRequest.params = {
@@ -629,12 +684,15 @@ describe('languagesController', () => {
       };
 
       // 临时修改 getSupportedLanguages 以包含不存在的语言
-      mockTreeSitterService.getSupportedLanguages.mockReturnValue(['javascript', 'nonexistent' as SupportedLanguage]);
+      mockTreeSitterService.getSupportedLanguages.mockReturnValue([
+        'javascript',
+        'nonexistent' as SupportedLanguage,
+      ]);
 
       // 执行测试
       await languagesController.getLanguageExamples(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果

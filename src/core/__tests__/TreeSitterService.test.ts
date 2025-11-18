@@ -5,19 +5,25 @@ import { CleanupStrategy } from '@/config/memory';
 
 // Mock相关的依赖
 jest.mock('../LanguageManager', () => {
- const originalModule = jest.requireActual('../LanguageManager');
+  const originalModule = jest.requireActual('../LanguageManager');
   return {
     __esModule: true,
     ...originalModule,
     LanguageManager: jest.fn().mockImplementation(() => ({
-      isLanguageSupported: jest.fn((lang: string) => ['javascript', 'python', 'typescript'].includes(lang)),
+      isLanguageSupported: jest.fn((lang: string) =>
+        ['javascript', 'python', 'typescript'].includes(lang),
+      ),
       getLanguage: jest.fn(async (lang: SupportedLanguage) => {
         if (lang === 'javascript') {
           return { name: 'javascript', language: 'javascript' };
         }
         throw new Error(`Language ${lang} not available in test`);
       }),
-      getSupportedLanguages: jest.fn(() => ['javascript', 'python', 'typescript']),
+      getSupportedLanguages: jest.fn(() => [
+        'javascript',
+        'python',
+        'typescript',
+      ]),
       getStatus: jest.fn(() => ({
         supportedLanguages: ['javascript', 'python', 'typescript'],
         loadedLanguages: [],
@@ -29,15 +35,15 @@ jest.mock('../LanguageManager', () => {
       clearCache: jest.fn(),
       preloadAllLanguages: jest.fn(async () => {}),
     })),
- };
+  };
 });
 
-jest.mock('../LightweightParserPool', () => {
-  const originalModule = jest.requireActual('../LightweightParserPool');
+jest.mock('../ParserPool', () => {
+  const originalModule = jest.requireActual('../ParserPool');
   return {
     __esModule: true,
     ...originalModule,
-    LightweightParserPool: jest.fn().mockImplementation(() => ({
+    ParserPool: jest.fn().mockImplementation(() => ({
       getParser: jest.fn(() => ({
         setLanguage: jest.fn(),
         parse: jest.fn(() => ({
@@ -190,7 +196,7 @@ describe('TreeSitterService', () => {
       };
 
       const result = await treeSitterService.processRequest(request);
-      
+
       expect(result).toHaveProperty('success');
       expect(result).toHaveProperty('matches');
       expect(result).toHaveProperty('errors');
@@ -207,10 +213,10 @@ describe('TreeSitterService', () => {
       };
 
       const result = await treeSitterService.processRequest(request);
-      
+
       expect(result.success).toBe(false);
       expect(result.errors).toContainEqual(
-        expect.stringContaining('Unsupported language')
+        expect.stringContaining('Unsupported language'),
       );
     });
 
@@ -221,10 +227,10 @@ describe('TreeSitterService', () => {
       } as any;
 
       const result = await treeSitterService.processRequest(request);
-      
+
       expect(result.success).toBe(false);
       expect(result.errors).toContainEqual(
-        expect.stringContaining('Missing required fields')
+        expect.stringContaining('Missing required fields'),
       );
     });
 
@@ -235,10 +241,10 @@ describe('TreeSitterService', () => {
       };
 
       const result = await treeSitterService.processRequest(request);
-      
+
       expect(result.success).toBe(false);
       expect(result.errors).toContainEqual(
-        expect.stringContaining('Missing required fields')
+        expect.stringContaining('Missing required fields'),
       );
     });
 
@@ -250,7 +256,7 @@ describe('TreeSitterService', () => {
       };
 
       const result = await treeSitterService.processRequest(request);
-      
+
       expect(result.success).toBe(true);
       expect(Array.isArray(result.matches)).toBe(true);
       expect(result.matches.length).toBe(0);
@@ -266,11 +272,11 @@ describe('TreeSitterService', () => {
       };
 
       const result = await treeSitterService.processRequest(request);
-      
+
       if (!result.success) {
         expect(result.success).toBe(false);
         expect(result.errors).toContainEqual(
-          expect.stringContaining('Code length exceeds maximum allowed size')
+          expect.stringContaining('Code length exceeds maximum allowed size'),
         );
       }
     });
@@ -283,11 +289,11 @@ describe('TreeSitterService', () => {
       };
 
       const result = await treeSitterService.processRequest(request);
-      
+
       if (!result.success) {
         expect(result.success).toBe(false);
         expect(result.errors).toContainEqual(
-          expect.stringContaining('Too many queries')
+          expect.stringContaining('Too many queries'),
         );
       }
     });
@@ -296,14 +302,14 @@ describe('TreeSitterService', () => {
   describe('getHealthStatus', () => {
     it('should return health status', () => {
       const healthStatus = treeSitterService.getHealthStatus();
-      
+
       expect(healthStatus).toHaveProperty('status');
       expect(healthStatus).toHaveProperty('memory');
       expect(healthStatus).toHaveProperty('parserPool');
       expect(healthStatus).toHaveProperty('languageManager');
       expect(healthStatus).toHaveProperty('service');
       expect(healthStatus).toHaveProperty('timestamp');
-      
+
       expect(['healthy', 'warning', 'error']).toContain(healthStatus.status);
       expect(healthStatus.service).toHaveProperty('requestCount');
       expect(healthStatus.service).toHaveProperty('errorCount');
@@ -312,7 +318,7 @@ describe('TreeSitterService', () => {
     });
   });
 
- describe('getSupportedLanguages', () => {
+  describe('getSupportedLanguages', () => {
     it('should return supported languages', () => {
       const languages = treeSitterService.getSupportedLanguages();
       expect(Array.isArray(languages)).toBe(true);
@@ -322,42 +328,42 @@ describe('TreeSitterService', () => {
 
   describe('preloadLanguages', () => {
     it('should preload languages', async () => {
-      await expect(treeSitterService.preloadLanguages())
-        .resolves
-        .not.toThrow();
+      await expect(treeSitterService.preloadLanguages()).resolves.not.toThrow();
     });
   });
 
   describe('performCleanup', () => {
     it('should perform cleanup with default strategy', async () => {
       const result = await treeSitterService.performCleanup();
-      
+
       expect(result).toHaveProperty('memoryFreed');
       expect(result).toHaveProperty('duration');
       expect(result).toHaveProperty('success');
-      
+
       expect(typeof result.memoryFreed).toBe('number');
       expect(typeof result.duration).toBe('number');
       expect(typeof result.success).toBe('boolean');
     });
 
     it('should perform cleanup with specific strategy', async () => {
-      const result = await treeSitterService.performCleanup(CleanupStrategy.BASIC);
-      
+      const result = await treeSitterService.performCleanup(
+        CleanupStrategy.BASIC,
+      );
+
       expect(result).toHaveProperty('memoryFreed');
       expect(result).toHaveProperty('duration');
       expect(result).toHaveProperty('success');
     });
   });
 
- describe('getDetailedStats', () => {
+  describe('getDetailedStats', () => {
     it('should return detailed statistics', () => {
       const stats = treeSitterService.getDetailedStats();
-      
+
       expect(stats).toHaveProperty('health');
       expect(stats).toHaveProperty('memory');
       expect(stats).toHaveProperty('cleanup');
-      
+
       expect(stats.health).toHaveProperty('status');
       expect(stats.memory).toHaveProperty('status');
       expect(stats.cleanup).toHaveProperty('totalCleanups');
@@ -369,21 +375,19 @@ describe('TreeSitterService', () => {
       // 获取初始统计
       const initialStats = treeSitterService.getHealthStatus();
       expect(initialStats.service.requestCount).toBe(0); // 初始为0
-      
+
       // 重置统计
       treeSitterService.resetStats();
-      
+
       // 再次获取统计
       const finalStats = treeSitterService.getHealthStatus();
       expect(finalStats.service.requestCount).toBe(0);
     });
   });
 
- describe('emergencyCleanup', () => {
+  describe('emergencyCleanup', () => {
     it('should perform emergency cleanup', async () => {
-      await expect(treeSitterService.emergencyCleanup())
-        .resolves
-        .not.toThrow();
+      await expect(treeSitterService.emergencyCleanup()).resolves.not.toThrow();
     });
   });
 
@@ -392,10 +396,10 @@ describe('TreeSitterService', () => {
       // 验证初始状态
       const initialHealth = treeSitterService.getHealthStatus();
       expect(initialHealth).toBeDefined();
-      
+
       // 销毁服务
       treeSitterService.destroy();
-      
+
       // 验证服务被正确销毁（不会抛出异常）
       const finalHealth = treeSitterService.getHealthStatus();
       expect(finalHealth).toBeDefined(); // 在实际实现中，销毁后的方法调用可能有不同的行为
@@ -411,7 +415,7 @@ describe('TreeSitterService', () => {
       } as any;
 
       const result = await treeSitterService.processRequest(request);
-      
+
       expect(result.success).toBe(false);
       expect(Array.isArray(result.errors)).toBe(true);
     });
@@ -425,7 +429,7 @@ describe('TreeSitterService', () => {
       };
 
       const result = await treeSitterService.processRequest(request);
-      
+
       // 结果可能是成功（如果查询错误被内部处理）或失败（如果抛出异常）
       expect(result).toHaveProperty('success');
       expect(Array.isArray(result.matches)).toBe(true);
@@ -442,7 +446,7 @@ describe('TreeSitterService', () => {
       };
 
       const result = await treeSitterService.processRequest(request);
-      
+
       expect(result.success).toBe(true);
       expect(result.matches).toEqual([]);
     });
@@ -456,7 +460,7 @@ describe('TreeSitterService', () => {
       };
 
       const result = await treeSitterService.processRequest(request);
-      
+
       expect(result).toHaveProperty('success');
       expect(Array.isArray(result.matches)).toBe(true);
     });

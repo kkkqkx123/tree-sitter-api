@@ -11,7 +11,11 @@ import { log } from '@/utils/Logger';
 /**
  * 验证解析请求的中间件
  */
-export const validateParseRequest = (req: Request, res: Response, next: NextFunction): void => {
+export const validateParseRequest = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void => {
   try {
     const body = req.body as ParseRequest;
 
@@ -20,7 +24,7 @@ export const validateParseRequest = (req: Request, res: Response, next: NextFunc
       throw new TreeSitterError(
         ErrorType.VALIDATION_ERROR,
         ErrorSeverity.MEDIUM,
-        'Request body is required'
+        'Request body is required',
       );
     }
 
@@ -29,7 +33,7 @@ export const validateParseRequest = (req: Request, res: Response, next: NextFunc
       throw new TreeSitterError(
         ErrorType.VALIDATION_ERROR,
         ErrorSeverity.MEDIUM,
-        'Missing or invalid field: language (string required)'
+        'Missing or invalid field: language (string required)',
       );
     }
 
@@ -37,7 +41,7 @@ export const validateParseRequest = (req: Request, res: Response, next: NextFunc
       throw new TreeSitterError(
         ErrorType.VALIDATION_ERROR,
         ErrorSeverity.MEDIUM,
-        'Missing or invalid field: code (string required)'
+        'Missing or invalid field: code (string required)',
       );
     }
 
@@ -46,7 +50,7 @@ export const validateParseRequest = (req: Request, res: Response, next: NextFunc
       throw new TreeSitterError(
         ErrorType.VALIDATION_ERROR,
         ErrorSeverity.MEDIUM,
-        'Invalid language format. Only alphanumeric characters, hyphens and underscores are allowed'
+        'Invalid language format. Only alphanumeric characters, hyphens and underscores are allowed',
       );
     }
 
@@ -55,7 +59,7 @@ export const validateParseRequest = (req: Request, res: Response, next: NextFunc
       throw new TreeSitterError(
         ErrorType.VALIDATION_ERROR,
         ErrorSeverity.MEDIUM,
-        `Code length exceeds maximum allowed size of ${EnvConfig.MAX_CODE_LENGTH} bytes`
+        `Code length exceeds maximum allowed size of ${EnvConfig.MAX_CODE_LENGTH} bytes`,
       );
     }
 
@@ -64,7 +68,7 @@ export const validateParseRequest = (req: Request, res: Response, next: NextFunc
       throw new TreeSitterError(
         ErrorType.VALIDATION_ERROR,
         ErrorSeverity.MEDIUM,
-        'Invalid field: query (string expected)'
+        'Invalid field: query (string expected)',
       );
     }
 
@@ -74,7 +78,7 @@ export const validateParseRequest = (req: Request, res: Response, next: NextFunc
         throw new TreeSitterError(
           ErrorType.VALIDATION_ERROR,
           ErrorSeverity.MEDIUM,
-          'Invalid field: queries (array expected)'
+          'Invalid field: queries (array expected)',
         );
       }
 
@@ -84,7 +88,7 @@ export const validateParseRequest = (req: Request, res: Response, next: NextFunc
           throw new TreeSitterError(
             ErrorType.VALIDATION_ERROR,
             ErrorSeverity.MEDIUM,
-            `Invalid query at index ${i}: string expected`
+            `Invalid query at index ${i}: string expected`,
           );
         }
       }
@@ -96,7 +100,7 @@ export const validateParseRequest = (req: Request, res: Response, next: NextFunc
       throw new TreeSitterError(
         ErrorType.VALIDATION_ERROR,
         ErrorSeverity.MEDIUM,
-        `Too many queries. Maximum allowed is 10, got ${queryCount}`
+        `Too many queries. Maximum allowed is 10, got ${queryCount}`,
       );
     }
 
@@ -112,13 +116,19 @@ export const validateParseRequest = (req: Request, res: Response, next: NextFunc
     }
 
     // 记录验证通过的请求
-    const requestId = req.headers['x-request-id'] as string || 'unknown';
-    log.debug('Validation', `Parse request validated successfully - RequestID: ${requestId}, Language: ${body.language}, Code length: ${body.code.length}, Query count: ${queryCount}`);
+    const requestId = (req.headers['x-request-id'] as string) || 'unknown';
+    log.debug(
+      'Validation',
+      `Parse request validated successfully - RequestID: ${requestId}, Language: ${body.language}, Code length: ${body.code.length}, Query count: ${queryCount}`,
+    );
 
     next();
   } catch (error) {
-    const requestId = req.headers['x-request-id'] as string || 'unknown';
-    log.warn('Validation', `Parse request validation failed - RequestID: ${requestId}, Error: ${error instanceof Error ? error.message : String(error)}`);
+    const requestId = (req.headers['x-request-id'] as string) || 'unknown';
+    log.warn(
+      'Validation',
+      `Parse request validation failed - RequestID: ${requestId}, Error: ${error instanceof Error ? error.message : String(error)}`,
+    );
 
     if (error instanceof TreeSitterError) {
       res.status(400).json({
@@ -145,7 +155,7 @@ function validateQuerySyntax(query: string, field: string): void {
     throw new TreeSitterError(
       ErrorType.QUERY_ERROR,
       ErrorSeverity.MEDIUM,
-      `Empty query in field: ${field}`
+      `Empty query in field: ${field}`,
     );
   }
 
@@ -160,7 +170,7 @@ function validateQuerySyntax(query: string, field: string): void {
         throw new TreeSitterError(
           ErrorType.QUERY_ERROR,
           ErrorSeverity.MEDIUM,
-          `Unbalanced parentheses in query: ${field}`
+          `Unbalanced parentheses in query: ${field}`,
         );
       }
     }
@@ -170,7 +180,7 @@ function validateQuerySyntax(query: string, field: string): void {
     throw new TreeSitterError(
       ErrorType.QUERY_ERROR,
       ErrorSeverity.MEDIUM,
-      `Unbalanced parentheses in query: ${field}`
+      `Unbalanced parentheses in query: ${field}`,
     );
   }
 
@@ -179,7 +189,7 @@ function validateQuerySyntax(query: string, field: string): void {
     throw new TreeSitterError(
       ErrorType.QUERY_ERROR,
       ErrorSeverity.MEDIUM,
-      `Query must contain at least one capture pattern with @ symbol: ${field}`
+      `Query must contain at least one capture pattern with @ symbol: ${field}`,
     );
   }
 }
@@ -193,8 +203,11 @@ export const validateRequest = (validationFn: (req: Request) => void) => {
       validationFn(req);
       next();
     } catch (error) {
-      const requestId = req.headers['x-request-id'] as string || 'unknown';
-      log.warn('Validation', `Request validation failed - RequestID: ${requestId}, Error: ${error instanceof Error ? error.message : String(error)}`);
+      const requestId = (req.headers['x-request-id'] as string) || 'unknown';
+      log.warn(
+        'Validation',
+        `Request validation failed - RequestID: ${requestId}, Error: ${error instanceof Error ? error.message : String(error)}`,
+      );
 
       if (error instanceof TreeSitterError) {
         const statusCode = getStatusCode(error.type);
@@ -266,17 +279,23 @@ function parseSizeString(sizeStr: string | undefined): number {
 }
 
 export const requestSizeLimit = (maxSize?: number) => {
-  const finalMaxSize = maxSize ?? parseSizeString(EnvConfig.MAX_REQUEST_SIZE as string);
+  const finalMaxSize =
+    maxSize ?? parseSizeString(EnvConfig.MAX_REQUEST_SIZE as string);
   return (req: Request, res: Response, next: NextFunction): void => {
     const contentLength = parseInt(req.headers['content-length'] || '0', 10);
 
     if (contentLength > finalMaxSize) {
-      const requestId = req.headers['x-request-id'] as string || 'unknown';
-      log.warn('Validation', `Request size limit exceeded - RequestID: ${requestId}, Size: ${contentLength}, Limit: ${finalMaxSize}`);
+      const requestId = (req.headers['x-request-id'] as string) || 'unknown';
+      log.warn(
+        'Validation',
+        `Request size limit exceeded - RequestID: ${requestId}, Size: ${contentLength}, Limit: ${finalMaxSize}`,
+      );
 
       res.status(413).json({
         success: false,
-        errors: [`Request size ${contentLength} exceeds maximum allowed size of ${finalMaxSize} bytes`],
+        errors: [
+          `Request size ${contentLength} exceeds maximum allowed size of ${finalMaxSize} bytes`,
+        ],
         timestamp: new Date().toISOString(),
       });
       return;
@@ -299,14 +318,20 @@ export class ConcurrencyLimiter {
 
   middleware() {
     return (req: Request, res: Response, next: NextFunction): void => {
-      const requestId = req.headers['x-request-id'] as string || this.generateRequestId();
+      const requestId =
+        (req.headers['x-request-id'] as string) || this.generateRequestId();
 
       if (this.activeRequests.size >= this.maxConcurrent) {
-        log.warn('ConcurrencyLimiter', `Concurrent request limit exceeded - RequestID: ${requestId}, Active: ${this.activeRequests.size}, Limit: ${this.maxConcurrent}`);
+        log.warn(
+          'ConcurrencyLimiter',
+          `Concurrent request limit exceeded - RequestID: ${requestId}, Active: ${this.activeRequests.size}, Limit: ${this.maxConcurrent}`,
+        );
 
         res.status(429).json({
           success: false,
-          errors: [`Server is busy. Maximum concurrent requests (${this.maxConcurrent}) exceeded. Please try again later.`],
+          errors: [
+            `Server is busy. Maximum concurrent requests (${this.maxConcurrent}) exceeded. Please try again later.`,
+          ],
           timestamp: new Date().toISOString(),
         });
         return;

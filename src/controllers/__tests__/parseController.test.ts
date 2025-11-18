@@ -75,13 +75,18 @@ describe('parseController', () => {
       // 执行测试
       await parseController.parseCode(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
-      expect(mockTreeSitterService.processRequest).toHaveBeenCalledWith(parseRequest);
+      expect(mockTreeSitterService.processRequest).toHaveBeenCalledWith(
+        parseRequest,
+      );
       expect(mockResponse.status).toHaveBeenCalledWith(200);
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('X-Processing-Time', expect.any(String));
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'X-Processing-Time',
+        expect.any(String),
+      );
       expect(mockResponse.setHeader).toHaveBeenCalledWith('X-Match-Count', '1');
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: true,
@@ -111,12 +116,15 @@ describe('parseController', () => {
       // 执行测试
       await parseController.parseCode(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
       expect(mockResponse.status).toHaveBeenCalledWith(422);
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('X-Processing-Time', expect.any(String));
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'X-Processing-Time',
+        expect.any(String),
+      );
       expect(mockResponse.setHeader).toHaveBeenCalledWith('X-Match-Count', '0');
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
@@ -135,17 +143,22 @@ describe('parseController', () => {
       };
 
       mockRequest.body = parseRequest;
-      mockTreeSitterService.processRequest.mockRejectedValue(new Error('Service error'));
+      mockTreeSitterService.processRequest.mockRejectedValue(
+        new Error('Service error'),
+      );
 
       // 执行测试
       await parseController.parseCode(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
       expect(mockResponse.status).toHaveBeenCalledWith(500);
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('X-Processing-Time', expect.any(String));
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'X-Processing-Time',
+        expect.any(String),
+      );
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
         errors: ['Service error'],
@@ -174,7 +187,7 @@ describe('parseController', () => {
       // 执行测试
       await parseController.parseCode(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -236,15 +249,21 @@ describe('parseController', () => {
       // 执行测试
       await parseController.parseBatch(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
       expect(mockTreeSitterService.processRequest).toHaveBeenCalledTimes(2);
       expect(mockResponse.status).toHaveBeenCalledWith(200);
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('X-Processing-Time', expect.any(String));
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'X-Processing-Time',
+        expect.any(String),
+      );
       expect(mockResponse.setHeader).toHaveBeenCalledWith('X-Batch-Size', '2');
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('X-Success-Count', '2');
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'X-Success-Count',
+        '2',
+      );
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: true,
         data: {
@@ -304,12 +323,15 @@ describe('parseController', () => {
       // 执行测试
       await parseController.parseBatch(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
       expect(mockResponse.status).toHaveBeenCalledWith(200);
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('X-Success-Count', '1');
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'X-Success-Count',
+        '1',
+      );
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: true,
         data: {
@@ -332,7 +354,7 @@ describe('parseController', () => {
       // 执行测试
       await parseController.parseBatch(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -357,7 +379,7 @@ describe('parseController', () => {
       // 执行测试
       await parseController.parseBatch(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -376,7 +398,7 @@ describe('parseController', () => {
       // 执行测试
       await parseController.parseBatch(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -404,7 +426,7 @@ describe('parseController', () => {
       // 执行测试
       await parseController.parseBatch(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -427,12 +449,14 @@ describe('parseController', () => {
       ];
 
       mockRequest.body = { requests };
-      mockTreeSitterService.processRequest.mockRejectedValue(new Error('Service error'));
+      mockTreeSitterService.processRequest.mockRejectedValue(
+        new Error('Service error'),
+      );
 
       // 执行测试
       await parseController.parseBatch(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果 - 修正期望的状态码，因为控制器在批量处理中会捕获错误并返回200状态码
@@ -479,7 +503,7 @@ describe('parseController', () => {
       // 执行测试
       await parseController.validateQuery(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -489,7 +513,10 @@ describe('parseController', () => {
         query,
       });
       expect(mockResponse.status).toHaveBeenCalledWith(200);
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('X-Processing-Time', expect.any(String));
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'X-Processing-Time',
+        expect.any(String),
+      );
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: true,
         data: {
@@ -521,12 +548,15 @@ describe('parseController', () => {
       // 执行测试
       await parseController.validateQuery(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
       expect(mockResponse.status).toHaveBeenCalledWith(422);
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('X-Processing-Time', expect.any(String));
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'X-Processing-Time',
+        expect.any(String),
+      );
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
         data: {
@@ -548,7 +578,7 @@ describe('parseController', () => {
       // 执行测试
       await parseController.validateQuery(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -569,7 +599,7 @@ describe('parseController', () => {
       // 执行测试
       await parseController.validateQuery(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -591,7 +621,7 @@ describe('parseController', () => {
       // 执行测试
       await parseController.validateQuery(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -613,7 +643,7 @@ describe('parseController', () => {
       // 执行测试
       await parseController.validateQuery(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
@@ -633,17 +663,22 @@ describe('parseController', () => {
       };
 
       mockRequest.body = { language, query };
-      mockTreeSitterService.processRequest.mockRejectedValue(new Error('Service error'));
+      mockTreeSitterService.processRequest.mockRejectedValue(
+        new Error('Service error'),
+      );
 
       // 执行测试
       await parseController.validateQuery(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       // 验证结果
       expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('X-Processing-Time', expect.any(String));
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'X-Processing-Time',
+        expect.any(String),
+      );
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
         errors: ['Service error'],

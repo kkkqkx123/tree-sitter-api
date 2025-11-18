@@ -3,11 +3,11 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { 
-  globalErrorHandler, 
-  asyncErrorHandler, 
-  errorLogger, 
-  notFoundHandler 
+import {
+  globalErrorHandler,
+  asyncErrorHandler,
+  errorLogger,
+  notFoundHandler,
 } from '../globalErrorHandler';
 import { ErrorHandler } from '@/errors/ErrorHandler';
 import { RecoveryStrategy } from '@/errors/RecoveryStrategy';
@@ -44,7 +44,7 @@ describe('globalErrorHandler 中间件', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // 创建模拟的请求和响应对象
     mockRequest = {
       method: 'POST',
@@ -75,7 +75,7 @@ describe('globalErrorHandler 中间件', () => {
       const treeSitterError = new TreeSitterError(
         ErrorType.INTERNAL_ERROR,
         ErrorSeverity.MEDIUM,
-        'Test error message'
+        'Test error message',
       );
 
       const recoveryResult = {
@@ -88,11 +88,21 @@ describe('globalErrorHandler 中间件', () => {
       mockRecoveryStrategy.attemptRecovery.mockResolvedValue(recoveryResult);
 
       // 执行测试
-      await middleware(testError, mockRequest as Request, mockResponse as Response, mockNext);
+      await middleware(
+        testError,
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
-      expect(mockErrorHandler.handleError).toHaveBeenCalledWith(testError, 'POST /api/parse');
-      expect(mockRecoveryStrategy.attemptRecovery).toHaveBeenCalledWith(treeSitterError);
+      expect(mockErrorHandler.handleError).toHaveBeenCalledWith(
+        testError,
+        'POST /api/parse',
+      );
+      expect(mockRecoveryStrategy.attemptRecovery).toHaveBeenCalledWith(
+        treeSitterError,
+      );
       expect(mockResponse.status).toHaveBeenCalledWith(500);
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
@@ -114,7 +124,7 @@ describe('globalErrorHandler 中间件', () => {
       const treeSitterError = new TreeSitterError(
         ErrorType.MEMORY_ERROR,
         ErrorSeverity.HIGH,
-        'Memory error'
+        'Memory error',
       );
 
       const recoveryResult = {
@@ -127,10 +137,17 @@ describe('globalErrorHandler 中间件', () => {
       mockRecoveryStrategy.attemptRecovery.mockResolvedValue(recoveryResult);
 
       // 执行测试
-      await middleware(testError, mockRequest as Request, mockResponse as Response, mockNext);
+      await middleware(
+        testError,
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
-      expect(mockRecoveryStrategy.attemptRecovery).toHaveBeenCalledWith(treeSitterError);
+      expect(mockRecoveryStrategy.attemptRecovery).toHaveBeenCalledWith(
+        treeSitterError,
+      );
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
         errors: ['Memory error'],
@@ -154,7 +171,7 @@ describe('globalErrorHandler 中间件', () => {
         ErrorType.PARSE_ERROR,
         ErrorSeverity.MEDIUM,
         'Parse error',
-        { detail: 'Additional error detail' }
+        { detail: 'Additional error detail' },
       );
 
       const recoveryResult = {
@@ -167,7 +184,12 @@ describe('globalErrorHandler 中间件', () => {
       mockRecoveryStrategy.attemptRecovery.mockResolvedValue(recoveryResult);
 
       // 执行测试
-      await middleware(testError, mockRequest as Request, mockResponse as Response, mockNext);
+      await middleware(
+        testError,
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -196,11 +218,11 @@ describe('globalErrorHandler 中间件', () => {
         ...mockRequest,
         headers: {},
       };
-      
+
       const treeSitterError = new TreeSitterError(
         ErrorType.VALIDATION_ERROR,
         ErrorSeverity.LOW,
-        'Validation error'
+        'Validation error',
       );
 
       const recoveryResult = {
@@ -213,7 +235,12 @@ describe('globalErrorHandler 中间件', () => {
       mockRecoveryStrategy.attemptRecovery.mockResolvedValue(recoveryResult);
 
       // 执行测试
-      await middleware(testError, request as Request, mockResponse as Response, mockNext);
+      await middleware(
+        testError,
+        request as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -249,7 +276,7 @@ describe('globalErrorHandler 中间件', () => {
         const treeSitterError = new TreeSitterError(
           type,
           ErrorSeverity.MEDIUM,
-          `${type} error`
+          `${type} error`,
         );
 
         const recoveryResult = {
@@ -263,13 +290,18 @@ describe('globalErrorHandler 中间件', () => {
 
         // 重置mock
         jest.clearAllMocks();
-        
+
         // 重新设置mock
         mockErrorHandler.handleError.mockReturnValue(treeSitterError);
         mockRecoveryStrategy.attemptRecovery.mockResolvedValue(recoveryResult);
 
         // 执行测试
-        await middleware(testError, mockRequest as Request, mockResponse as Response, mockNext);
+        await middleware(
+          testError,
+          mockRequest as Request,
+          mockResponse as Response,
+          mockNext,
+        );
 
         // 验证结果
         expect(mockResponse.status).toHaveBeenCalledWith(expectedStatus);
@@ -280,14 +312,24 @@ describe('globalErrorHandler 中间件', () => {
   describe('asyncErrorHandler', () => {
     it('应该捕获异步函数中的错误', async () => {
       // 准备测试数据
-      const asyncFunction = jest.fn().mockRejectedValue(new Error('Async error'));
+      const asyncFunction = jest
+        .fn()
+        .mockRejectedValue(new Error('Async error'));
       const wrappedFunction = asyncErrorHandler(asyncFunction);
 
       // 执行测试
-      await wrappedFunction(mockRequest as Request, mockResponse as Response, mockNext);
+      await wrappedFunction(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
-      expect(asyncFunction).toHaveBeenCalledWith(mockRequest, mockResponse, mockNext);
+      expect(asyncFunction).toHaveBeenCalledWith(
+        mockRequest,
+        mockResponse,
+        mockNext,
+      );
       expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
     });
 
@@ -297,10 +339,18 @@ describe('globalErrorHandler 中间件', () => {
       const wrappedFunction = asyncErrorHandler(asyncFunction);
 
       // 执行测试
-      await wrappedFunction(mockRequest as Request, mockResponse as Response, mockNext);
+      await wrappedFunction(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
-      expect(asyncFunction).toHaveBeenCalledWith(mockRequest, mockResponse, mockNext);
+      expect(asyncFunction).toHaveBeenCalledWith(
+        mockRequest,
+        mockResponse,
+        mockNext,
+      );
       expect(mockNext).not.toHaveBeenCalled();
     });
   });
@@ -375,7 +425,11 @@ describe('globalErrorHandler 中间件', () => {
   describe('notFoundHandler', () => {
     it('应该返回404错误', () => {
       // 执行测试
-      notFoundHandler(mockRequest as Request, mockResponse as Response, mockNext);
+      notFoundHandler(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockResponse.status).toHaveBeenCalledWith(404);

@@ -2,7 +2,11 @@
  * 内存监控器 - 简化的内存监控功能
  */
 
-import { MemoryConfig, MemoryTrend } from '@/config/memory';
+import {
+  MemoryConfig,
+  MemoryTrend,
+  refreshMemoryConfig,
+} from '@/config/memory';
 import { MemoryStatus } from '@/types/errors';
 import { forceGarbageCollection, getMemoryUsage } from '@/utils/memoryUtils';
 import { log } from '@/utils/Logger';
@@ -12,13 +16,33 @@ export class MemoryMonitor {
   private lastForceGC = 0;
   private monitoringInterval: NodeJS.Timeout | null = null;
   private isMonitoring = false;
+  private configRefreshInterval: NodeJS.Timeout | null = null;
 
-  constructor() {}
+  constructor() {
+    // 设置配置刷新间隔，以便在运行时更新配置
+    this.setupConfigRefresh();
+  }
+
+  /**
+   * 设置配置刷新
+   */
+  private setupConfigRefresh(): void {
+    // 每5分钟检查一次配置是否需要刷新
+    this.configRefreshInterval = setInterval(
+      () => {
+        refreshMemoryConfig();
+        log.debug('MemoryMonitor', 'Memory configuration refreshed');
+      },
+      5 * 60 * 1000,
+    );
+  }
 
   /**
    * 开始内存监控
    */
-  startMonitoring(intervalMs: number = MemoryConfig.MONITORING.METRICS_INTERVAL): void {
+  startMonitoring(
+    intervalMs: number = MemoryConfig.MONITORING.METRICS_INTERVAL,
+  ): void {
     if (this.isMonitoring) {
       return;
     }
@@ -26,6 +50,15 @@ export class MemoryMonitor {
     this.isMonitoring = true;
     this.monitoringInterval = setInterval(() => {
       // 简化：只记录日志，不记录历史数据
+      if (MemoryConfig.MONITORING.ENABLED) {
+        const status = this.checkMemory();
+        if (status.level === 'warning' || status.level === 'critical') {
+          log.warn(
+            'MemoryMonitor',
+            `Memory usage ${status.level}: ${status.heapUsed}MB`,
+          );
+        }
+      }
     }, intervalMs);
 
     log.info('MemoryMonitor', 'Memory monitoring started');
@@ -49,7 +82,7 @@ export class MemoryMonitor {
   checkMemory(): MemoryStatus {
     const usage = getMemoryUsage();
     const heapUsedMB = Math.round(usage.heapUsed / 1024 / 1024);
-    
+
     // 确定内存状态级别
     let level: MemoryStatus['level'];
     if (heapUsedMB >= MemoryConfig.THRESHOLDS.MAXIMUM) {
@@ -110,7 +143,7 @@ export class MemoryMonitor {
     historyLength: number;
   } {
     const current = Math.round(getMemoryUsage().heapUsed / 1024 / 1024);
-    
+
     return {
       current,
       peak: current, // 简化：返回当前值作为峰值
@@ -126,15 +159,23 @@ export class MemoryMonitor {
     status: MemoryStatus;
     stats: ReturnType<MemoryMonitor['getMemoryStats']>;
     process: NodeJS.MemoryUsage;
+    config: {
+      thresholds: typeof MemoryConfig.THRESHOLDS;
+      limits: typeof MemoryConfig.LIMITS;
+    };
   } {
     const status = this.checkMemory();
     const stats = this.getMemoryStats();
     const process = getMemoryUsage();
-    
+
     return {
       status,
       stats,
       process,
+      config: {
+        thresholds: MemoryConfig.THRESHOLDS,
+        limits: MemoryConfig.LIMITS,
+      },
     };
   }
 
@@ -148,7 +189,7 @@ export class MemoryMonitor {
     gcPerformed: boolean;
   }> {
     const beforeMemory = Math.round(getMemoryUsage().heapUsed / 1024 / 1024);
-    
+
     // 尝试强制垃圾回收
     let gcPerformed = false;
     if (this.shouldForceGC()) {
@@ -186,11 +227,21 @@ export class MemoryMonitor {
   getMonitoringStatus(): {
     isMonitoring: boolean;
     uptime: number;
+    configRefreshEnabled: boolean;
   } {
     return {
       isMonitoring: this.isMonitoring,
       uptime: process.uptime(),
+      configRefreshEnabled: this.configRefreshInterval !== null,
     };
+  }
+
+  /**
+   * 手动刷新配置
+   */
+  refreshConfig(): void {
+    refreshMemoryConfig();
+    log.info('MemoryMonitor', 'Memory configuration manually refreshed');
   }
 
   /**
@@ -199,5 +250,11 @@ export class MemoryMonitor {
   destroy(): void {
     this.stopMonitoring();
     this.resetHistory();
+
+    // 清理配置刷新定时器
+    if (this.configRefreshInterval) {
+      clearInterval(this.configRefreshInterval);
+      this.configRefreshInterval = null;
+    }
   }
 }

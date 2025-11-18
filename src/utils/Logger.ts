@@ -8,7 +8,7 @@ export enum LogLevel {
   INFO = 1,
   WARN = 2,
   ERROR = 3,
-  FATAL = 4
+  FATAL = 4,
 }
 
 export class Logger {
@@ -25,32 +25,42 @@ export class Logger {
 
   private parseLogLevel(level: string): LogLevel {
     switch (level.toLowerCase()) {
-      case 'debug': return LogLevel.DEBUG;
-      case 'info': return LogLevel.INFO;
-      case 'warn': return LogLevel.WARN;
-      case 'error': return LogLevel.ERROR;
-      case 'fatal': return LogLevel.FATAL;
-      default: return LogLevel.INFO;
+      case 'debug':
+        return LogLevel.DEBUG;
+      case 'info':
+        return LogLevel.INFO;
+      case 'warn':
+        return LogLevel.WARN;
+      case 'error':
+        return LogLevel.ERROR;
+      case 'fatal':
+        return LogLevel.FATAL;
+      default:
+        return LogLevel.INFO;
     }
   }
 
   private getCurrentLevel(): LogLevel {
-    return this.parseLogLevel(process.env["LOG_LEVEL"] || 'info');
+    return this.parseLogLevel(process.env['LOG_LEVEL'] || 'info');
   }
 
   private isTimestampEnabled(): boolean {
-    return process.env["ENABLE_LOG_TIMESTAMP"] !== 'false';
+    return process.env['ENABLE_LOG_TIMESTAMP'] !== 'false';
   }
 
   private isModuleEnabled(): boolean {
-    return process.env["ENABLE_LOG_MODULE"] !== 'false';
+    return process.env['ENABLE_LOG_MODULE'] !== 'false';
   }
 
   private shouldLog(level: LogLevel): boolean {
     return level >= this.getCurrentLevel();
   }
 
-  private formatMessage(level: string, module: string, message: string): string {
+  private formatMessage(
+    level: string,
+    module: string,
+    message: string,
+  ): string {
     const parts: string[] = [];
 
     if (this.isTimestampEnabled()) {
@@ -114,10 +124,16 @@ export const logger = Logger.getInstance();
 
 // 便捷的导出对象，保持简洁的调用方式
 export const log = {
-  debug: (module: string, message: string, ...args: any[]) => logger.debug(module, message, ...args),
-  info: (module: string, message: string, ...args: any[]) => logger.info(module, message, ...args),
-  warn: (module: string, message: string, ...args: any[]) => logger.warn(module, message, ...args),
-  error: (module: string, message: string, ...args: any[]) => logger.error(module, message, ...args),
-  fatal: (module: string, message: string, ...args: any[]) => logger.fatal(module, message, ...args),
-  log: (module: string, message: string, ...args: any[]) => logger.log(module, message, ...args)
+  debug: (module: string, message: string, ...args: any[]) =>
+    logger.debug(module, message, ...args),
+  info: (module: string, message: string, ...args: any[]) =>
+    logger.info(module, message, ...args),
+  warn: (module: string, message: string, ...args: any[]) =>
+    logger.warn(module, message, ...args),
+  error: (module: string, message: string, ...args: any[]) =>
+    logger.error(module, message, ...args),
+  fatal: (module: string, message: string, ...args: any[]) =>
+    logger.fatal(module, message, ...args),
+  log: (module: string, message: string, ...args: any[]) =>
+    logger.log(module, message, ...args),
 };

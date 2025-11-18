@@ -7,7 +7,7 @@ export {
   globalErrorHandler,
   asyncErrorHandler,
   errorLogger,
-  notFoundHandler
+  notFoundHandler,
 } from './globalErrorHandler';
 
 // 资源保护中间件
@@ -15,5 +15,5 @@ export {
   resourceGuard,
   memoryMonitor,
   rateLimiter,
-  healthCheck
+  healthCheck,
 } from './resourceGuard';

@@ -10,14 +10,23 @@ import { log } from '@/utils/Logger';
  */
 export const globalErrorHandler = (
   errorHandler: ErrorHandler,
-  recoveryStrategy: RecoveryStrategy
+  recoveryStrategy: RecoveryStrategy,
 ) => {
-  return async (error: Error, req: Request, res: Response, _next: NextFunction) => {
+  return async (
+    error: Error,
+    req: Request,
+    res: Response,
+    _next: NextFunction,
+  ) => {
     // 处理错误
-    const treeSitterError = errorHandler.handleError(error, `${req.method} ${req.path}`);
+    const treeSitterError = errorHandler.handleError(
+      error,
+      `${req.method} ${req.path}`,
+    );
 
     // 尝试恢复
-    const recoveryResult = await recoveryStrategy.attemptRecovery(treeSitterError);
+    const recoveryResult =
+      await recoveryStrategy.attemptRecovery(treeSitterError);
 
     // 记录恢复结果
     if (!recoveryResult.success) {
@@ -35,20 +44,24 @@ export const globalErrorHandler = (
       severity: treeSitterError.severity,
       timestamp: new Date().toISOString(),
       requestId: req.headers['x-request-id'] || generateRequestId(),
-      recovery: recoveryResult.success ? {
-        attempted: true,
-        action: recoveryResult.action,
-        message: recoveryResult.message
-      } : {
-        attempted: false,
-        reason: 'Recovery not applicable or failed'
-      }
+      recovery: recoveryResult.success
+        ? {
+            attempted: true,
+            action: recoveryResult.action,
+            message: recoveryResult.message,
+          }
+        : {
+            attempted: false,
+            reason: 'Recovery not applicable or failed',
+          },
     };
 
     // 在开发环境中包含更多错误详情
     if (process.env['NODE_ENV'] === 'development') {
-      (errorResponse as Record<string, unknown>)['details'] = treeSitterError.details;
-      (errorResponse as Record<string, unknown>)['stack'] = treeSitterError.stack;
+      (errorResponse as Record<string, unknown>)['details'] =
+        treeSitterError.details;
+      (errorResponse as Record<string, unknown>)['stack'] =
+        treeSitterError.stack;
     }
 
     // 发送错误响应
@@ -105,7 +118,11 @@ export const asyncErrorHandler = (fn: Function) => {
  * 错误日志中间件
  * 记录请求和错误信息
  */
-export const errorLogger = (req: Request, res: Response, next: NextFunction) => {
+export const errorLogger = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   const start = Date.now();
 
   // 记录请求开始
@@ -115,11 +132,17 @@ export const errorLogger = (req: Request, res: Response, next: NextFunction) => 
   res.on('finish', () => {
     const duration = Date.now() - start;
 
-    log.info('RequestLogger', `${req.method} ${req.path} - ${res.statusCode} - ${duration}ms`);
+    log.info(
+      'RequestLogger',
+      `${req.method} ${req.path} - ${res.statusCode} - ${duration}ms`,
+    );
 
     // 如果是错误响应，记录更多信息
     if (res.statusCode >= 400) {
-      log.error('RequestLogger', `${req.method} ${req.path} - ${res.statusCode} - ${duration}ms - ${req.ip}`);
+      log.error(
+        'RequestLogger',
+        `${req.method} ${req.path} - ${res.statusCode} - ${duration}ms - ${req.ip}`,
+      );
     }
   });
 
@@ -130,12 +153,16 @@ export const errorLogger = (req: Request, res: Response, next: NextFunction) => 
  * 404错误处理中间件
  * 处理未找到的路由
  */
-export const notFoundHandler = (req: Request, res: Response, _next: NextFunction) => {
+export const notFoundHandler = (
+  req: Request,
+  res: Response,
+  _next: NextFunction,
+) => {
   const error = new TreeSitterError(
     ErrorType.VALIDATION_ERROR,
     ErrorSeverity.LOW,
     `Route ${req.method} ${req.path} not found`,
-    { method: req.method, path: req.path, ip: req.ip }
+    { method: req.method, path: req.path, ip: req.ip },
   );
 
   res.status(404).json({
@@ -143,6 +170,6 @@ export const notFoundHandler = (req: Request, res: Response, _next: NextFunction
     errors: [error.message],
     errorType: error.type,
     timestamp: new Date().toISOString(),
-    requestId: req.headers['x-request-id'] || generateRequestId()
+    requestId: req.headers['x-request-id'] || generateRequestId(),
   });
 };

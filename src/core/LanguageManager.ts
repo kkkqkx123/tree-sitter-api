@@ -9,7 +9,8 @@ import { log } from '@/utils/Logger';
 export class LanguageManager {
   private languageModules: Map<SupportedLanguage, LanguageModule> = new Map();
   private supportedLanguages: Set<SupportedLanguage> = new Set();
-  private loadingPromises: Map<SupportedLanguage, Promise<LanguageModule>> = new Map();
+  private loadingPromises: Map<SupportedLanguage, Promise<LanguageModule>> =
+    new Map();
 
   constructor() {
     this.initializeSupportedLanguages();
@@ -57,7 +58,7 @@ export class LanguageManager {
       throw new TreeSitterError(
         ErrorType.UNSUPPORTED_LANGUAGE,
         ErrorSeverity.MEDIUM,
-        `Unsupported language: ${language}`
+        `Unsupported language: ${language}`,
       );
     }
 
@@ -87,7 +88,9 @@ export class LanguageManager {
   /**
    * 加载语言模块
    */
-  private async loadLanguageModule(language: SupportedLanguage): Promise<LanguageModule> {
+  private async loadLanguageModule(
+    language: SupportedLanguage,
+  ): Promise<LanguageModule> {
     try {
       let module: LanguageModule;
 
@@ -128,7 +131,7 @@ export class LanguageManager {
           throw new TreeSitterError(
             ErrorType.UNSUPPORTED_LANGUAGE,
             ErrorSeverity.MEDIUM,
-            `No parser available for ${language}`
+            `No parser available for ${language}`,
           );
       }
 
@@ -137,7 +140,7 @@ export class LanguageManager {
         throw new TreeSitterError(
           ErrorType.INTERNAL_ERROR,
           ErrorSeverity.HIGH,
-          `Invalid language module for ${language}`
+          `Invalid language module for ${language}`,
         );
       }
 
@@ -151,7 +154,7 @@ export class LanguageManager {
         ErrorType.INTERNAL_ERROR,
         ErrorSeverity.HIGH,
         `Failed to load ${language} parser: ${error instanceof Error ? error.message : String(error)}`,
-        { originalError: error }
+        { originalError: error },
       );
     }
   }
@@ -167,10 +170,10 @@ export class LanguageManager {
    * 预加载所有支持的语言模块
    */
   async preloadAllLanguages(): Promise<void> {
-    const promises = Array.from(this.supportedLanguages).map(lang => 
+    const promises = Array.from(this.supportedLanguages).map(lang =>
       this.preloadLanguage(lang).catch(error => {
         log.warn('LanguageManager', `Failed to preload ${lang}:`, error);
-      })
+      }),
     );
 
     await Promise.allSettled(promises);

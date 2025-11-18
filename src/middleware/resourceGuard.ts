@@ -8,9 +8,9 @@ import { log } from '@/utils/Logger';
  * 资源保护中间件配置
  */
 interface ResourceGuardConfig {
-  maxRequestSize: number;      // 最大请求大小（字节）
-  maxCodeLength: number;       // 最大代码长度（字节）
-  requestTimeout: number;      // 请求超时时间（毫秒）
+  maxRequestSize: number; // 最大请求大小（字节）
+  maxCodeLength: number; // 最大代码长度（字节）
+  requestTimeout: number; // 请求超时时间（毫秒）
   memoryCheckInterval: number; // 内存检查间隔（毫秒）
   maxConcurrentRequests: number; // 最大并发请求数
 }
@@ -19,11 +19,11 @@ interface ResourceGuardConfig {
  * 默认配置
  */
 const DEFAULT_CONFIG: ResourceGuardConfig = {
-  maxRequestSize: 5 * 1024 * 1024,  // 5MB
-  maxCodeLength: 100 * 1024,        // 100KB
-  requestTimeout: 30000,            // 30秒
-  memoryCheckInterval: 5000,        // 5秒
-  maxConcurrentRequests: 10         // 10个并发请求
+  maxRequestSize: 5 * 1024 * 1024, // 5MB
+  maxCodeLength: 100 * 1024, // 100KB
+  requestTimeout: 30000, // 30秒
+  memoryCheckInterval: 5000, // 5秒
+  maxConcurrentRequests: 10, // 10个并发请求
 };
 
 /**
@@ -33,19 +33,25 @@ const DEFAULT_CONFIG: ResourceGuardConfig = {
 export const resourceGuard = (
   memoryMonitor: MemoryMonitor,
   resourceCleaner: ResourceCleaner,
-  config: Partial<ResourceGuardConfig> = {}
+  config: Partial<ResourceGuardConfig> = {},
 ) => {
   const finalConfig = { ...DEFAULT_CONFIG, ...config };
   let activeRequests = 0;
   let lastMemoryCheck = 0;
 
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  return async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     // 检查并发请求数
     if (activeRequests >= finalConfig.maxConcurrentRequests) {
       return void res.status(503).json({
         success: false,
-        errors: ['Service temporarily unavailable: too many concurrent requests'],
-        timestamp: new Date().toISOString()
+        errors: [
+          'Service temporarily unavailable: too many concurrent requests',
+        ],
+        timestamp: new Date().toISOString(),
       });
     }
 
@@ -58,8 +64,10 @@ export const resourceGuard = (
       if (contentLength > finalConfig.maxRequestSize) {
         return void res.status(413).json({
           success: false,
-          errors: [`Request too large: ${contentLength} bytes (max: ${finalConfig.maxRequestSize} bytes)`],
-          timestamp: new Date().toISOString()
+          errors: [
+            `Request too large: ${contentLength} bytes (max: ${finalConfig.maxRequestSize} bytes)`,
+          ],
+          timestamp: new Date().toISOString(),
         });
       }
 
@@ -68,8 +76,10 @@ export const resourceGuard = (
         if (req.body.code.length > finalConfig.maxCodeLength) {
           return void res.status(413).json({
             success: false,
-            errors: [`Code too long: ${req.body.code.length} characters (max: ${finalConfig.maxCodeLength} characters)`],
-            timestamp: new Date().toISOString()
+            errors: [
+              `Code too long: ${req.body.code.length} characters (max: ${finalConfig.maxCodeLength} characters)`,
+            ],
+            timestamp: new Date().toISOString(),
           });
         }
       }
@@ -82,7 +92,10 @@ export const resourceGuard = (
 
         // 如果内存状态严重，尝试清理
         if (memoryStatus.level === 'critical') {
-          log.warn('ResourceGuard', 'Critical memory usage detected, attempting cleanup');
+          log.warn(
+            'ResourceGuard',
+            'Critical memory usage detected, attempting cleanup',
+          );
           await resourceCleaner.performCleanup(CleanupStrategy.EMERGENCY);
 
           // 再次检查内存状态
@@ -92,7 +105,7 @@ export const resourceGuard = (
               success: false,
               errors: ['Service temporarily unavailable: out of memory'],
               timestamp: new Date().toISOString(),
-              memoryStatus: statusAfterCleanup
+              memoryStatus: statusAfterCleanup,
             });
           }
         }
@@ -108,7 +121,7 @@ export const resourceGuard = (
           res.status(408).json({
             success: false,
             errors: ['Request timeout'],
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           });
         }
       });
@@ -122,15 +135,23 @@ export const resourceGuard = (
         const endMemory = process.memoryUsage();
         const memoryGrowth = endMemory.heapUsed - startMemory.heapUsed;
 
-        if (memoryGrowth > 10 * 1024 * 1024) { // 10MB增长
-          log.warn('ResourceGuard', `High memory growth detected: ${Math.round(memoryGrowth / 1024 / 1024)}MB`);
+        if (memoryGrowth > 10 * 1024 * 1024) {
+          // 10MB增长
+          log.warn(
+            'ResourceGuard',
+            `High memory growth detected: ${Math.round(memoryGrowth / 1024 / 1024)}MB`,
+          );
 
           // 如果需要，触发清理
           const currentMemoryStatus = memoryMonitor.checkMemory();
-          if (memoryMonitor.shouldCleanup() || currentMemoryStatus.level !== 'normal') {
-            const strategy = currentMemoryStatus.level === 'critical'
-              ? CleanupStrategy.EMERGENCY
-              : CleanupStrategy.AGGRESSIVE;
+          if (
+            memoryMonitor.shouldCleanup() ||
+            currentMemoryStatus.level !== 'normal'
+          ) {
+            const strategy =
+              currentMemoryStatus.level === 'critical'
+                ? CleanupStrategy.EMERGENCY
+                : CleanupStrategy.AGGRESSIVE;
             void resourceCleaner.performCleanup(strategy);
           }
         }
@@ -138,7 +159,6 @@ export const resourceGuard = (
 
       // 继续处理请求
       next();
-
     } catch (error) {
       // 确保在错误情况下也减少活跃请求计数
       activeRequests--;
@@ -175,7 +195,7 @@ export const memoryMonitor = (monitor: MemoryMonitor) => {
  */
 export const rateLimiter = (
   maxRequests: number = 100,
-  windowMs: number = 60000
+  windowMs: number = 60000,
 ): ((req: Request, res: Response, next: NextFunction) => void) => {
   const requests = new Map<string, { count: number; resetTime: number }>();
 
@@ -198,11 +218,12 @@ export const rateLimiter = (
       return void res.status(429).json({
         success: false,
         errors: [
-          `Too many requests: ${ipRequests.count}/${maxRequests} per ${windowMs / 1000
-          }s`
+          `Too many requests: ${ipRequests.count}/${maxRequests} per ${
+            windowMs / 1000
+          }s`,
         ],
         timestamp: new Date().toISOString(),
-        retryAfter: Math.ceil((ipRequests.resetTime - now) / 1000)
+        retryAfter: Math.ceil((ipRequests.resetTime - now) / 1000),
       });
     }
 
@@ -210,7 +231,7 @@ export const rateLimiter = (
     res.setHeader('X-RateLimit-Limit', maxRequests);
     res.setHeader(
       'X-RateLimit-Remaining',
-      Math.max(0, maxRequests - ipRequests.count)
+      Math.max(0, maxRequests - ipRequests.count),
     );
     res.setHeader('X-RateLimit-Reset', ipRequests.resetTime);
 
@@ -223,7 +244,9 @@ export const rateLimiter = (
  * 提供详细的系统健康状态
  */
 export const healthCheck = (
-  memoryMonitor: MemoryMonitor, errorHandler: any): ((req: Request, res: Response) => void) => {
+  memoryMonitor: MemoryMonitor,
+  errorHandler: any,
+): ((req: Request, res: Response) => void) => {
   return (_req: Request, res: Response): void => {
     const memoryStatus = memoryMonitor.checkMemory();
     const errorStats = errorHandler.getErrorStats();
@@ -234,7 +257,10 @@ export const healthCheck = (
 
     if (memoryStatus.level === 'critical' || errorStats.recentErrors > 10) {
       overallStatus = 'error';
-    } else if (memoryStatus.level === 'warning' || errorStats.recentErrors > 5) {
+    } else if (
+      memoryStatus.level === 'warning' ||
+      errorStats.recentErrors > 5
+    ) {
       overallStatus = 'warning';
     }
 
@@ -242,17 +268,17 @@ export const healthCheck = (
       status: overallStatus,
       memory: {
         ...memoryStatus,
-        stats: memoryStats
+        stats: memoryStats,
       },
       errors: errorStats,
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
-      version: process.env['npm_package_version'] || '1.0.0'
+      version: process.env['npm_package_version'] || '1.0.0',
     };
 
     // 根据健康状态设置HTTP状态码
-    const statusCode = overallStatus === 'error' ? 503 :
-      overallStatus === 'warning' ? 200 : 200;
+    const statusCode =
+      overallStatus === 'error' ? 503 : overallStatus === 'warning' ? 200 : 200;
 
     res.status(statusCode).json(response);
   };

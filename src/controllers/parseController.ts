@@ -15,20 +15,23 @@ export const createParseController = (service: TreeSitterService) => {
    * 处理解析请求
    */
   const parseCode = async (req: Request, res: Response): Promise<void> => {
-    const requestId = req.headers['x-request-id'] as string || 'unknown';
+    const requestId = (req.headers['x-request-id'] as string) || 'unknown';
     const startTime = Date.now();
 
     try {
       const parseRequest = req.body as ParseRequest;
-      
-      log.info('ParseController', `Processing parse request - RequestID: ${requestId}, Language: ${parseRequest.language}, Code length: ${parseRequest.code.length}`);
+
+      log.info(
+        'ParseController',
+        `Processing parse request - RequestID: ${requestId}, Language: ${parseRequest.language}, Code length: ${parseRequest.code.length}`,
+      );
 
       // 处理解析请求
       const result: ParseResult = await service.processRequest(parseRequest);
-      
+
       // 计算处理时间
       const duration = Date.now() - startTime;
-      
+
       // 构建响应
       const response: ApiResponse<ParseResult['matches']> = {
         success: result.success,
@@ -39,23 +42,33 @@ export const createParseController = (service: TreeSitterService) => {
 
       // 记录处理结果
       if (result.success) {
-        log.info('ParseController', `Parse request completed successfully - RequestID: ${requestId}, Duration: ${duration}ms, Matches: ${result.matches.length}`);
+        log.info(
+          'ParseController',
+          `Parse request completed successfully - RequestID: ${requestId}, Duration: ${duration}ms, Matches: ${result.matches.length}`,
+        );
       } else {
-        log.warn('ParseController', `Parse request completed with errors - RequestID: ${requestId}, Duration: ${duration}ms, Errors: ${result.errors.length}`);
+        log.warn(
+          'ParseController',
+          `Parse request completed with errors - RequestID: ${requestId}, Duration: ${duration}ms, Errors: ${result.errors.length}`,
+        );
       }
 
       // 设置响应头
       res.setHeader('X-Processing-Time', `${duration}ms`);
       res.setHeader('X-Match-Count', result.matches.length.toString());
-      
+
       // 发送响应
       res.status(result.success ? 200 : 422).json(response);
     } catch (error) {
       const duration = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      log.error('ParseController', `Parse request failed - RequestID: ${requestId}, Duration: ${duration}ms, Error: ${errorMessage}`);
-      
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      log.error(
+        'ParseController',
+        `Parse request failed - RequestID: ${requestId}, Duration: ${duration}ms, Error: ${errorMessage}`,
+      );
+
       const response: ApiResponse<null> = {
         success: false,
         errors: [errorMessage],
@@ -71,12 +84,12 @@ export const createParseController = (service: TreeSitterService) => {
    * 批量解析请求
    */
   const parseBatch = async (req: Request, res: Response): Promise<void> => {
-    const requestId = req.headers['x-request-id'] as string || 'unknown';
+    const requestId = (req.headers['x-request-id'] as string) || 'unknown';
     const startTime = Date.now();
 
     try {
       const requests = req.body.requests as ParseRequest[];
-      
+
       if (!Array.isArray(requests)) {
         throw new Error('Invalid request format: requests array is required');
       }
@@ -89,10 +102,13 @@ export const createParseController = (service: TreeSitterService) => {
         throw new Error('Too many requests in batch. Maximum allowed is 10');
       }
 
-      log.info('ParseController', `Processing batch parse request - RequestID: ${requestId}, Count: ${requests.length}`);
+      log.info(
+        'ParseController',
+        `Processing batch parse request - RequestID: ${requestId}, Count: ${requests.length}`,
+      );
 
       const results: ParseResult[] = [];
-      
+
       // 处理每个请求
       for (let i = 0; i < requests.length; i++) {
         const request = requests[i];
@@ -103,7 +119,8 @@ export const createParseController = (service: TreeSitterService) => {
           const result = await service.processRequest(request);
           results.push(result);
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
           results.push({
             success: false,
             matches: [],
@@ -114,12 +131,18 @@ export const createParseController = (service: TreeSitterService) => {
 
       // 计算处理时间
       const duration = Date.now() - startTime;
-      
+
       // 统计结果
       const successCount = results.filter(r => r.success).length;
-      const totalMatches = results.reduce((sum, r) => sum + r.matches.length, 0);
+      const totalMatches = results.reduce(
+        (sum, r) => sum + r.matches.length,
+        0,
+      );
 
-      log.info('ParseController', `Batch parse request completed - RequestID: ${requestId}, Duration: ${duration}ms, Success: ${successCount}/${requests.length}, Total matches: ${totalMatches}`);
+      log.info(
+        'ParseController',
+        `Batch parse request completed - RequestID: ${requestId}, Duration: ${duration}ms, Success: ${successCount}/${requests.length}, Total matches: ${totalMatches}`,
+      );
 
       // 构建响应
       const response = {
@@ -140,14 +163,18 @@ export const createParseController = (service: TreeSitterService) => {
       res.setHeader('X-Processing-Time', `${duration}ms`);
       res.setHeader('X-Batch-Size', requests.length.toString());
       res.setHeader('X-Success-Count', successCount.toString());
-      
+
       res.status(200).json(response);
     } catch (error) {
       const duration = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      log.error('ParseController', `Batch parse request failed - RequestID: ${requestId}, Duration: ${duration}ms, Error: ${errorMessage}`);
-      
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      log.error(
+        'ParseController',
+        `Batch parse request failed - RequestID: ${requestId}, Duration: ${duration}ms, Error: ${errorMessage}`,
+      );
+
       const response: ApiResponse<null> = {
         success: false,
         errors: [errorMessage],
@@ -163,7 +190,7 @@ export const createParseController = (service: TreeSitterService) => {
    * 验证查询语法
    */
   const validateQuery = async (req: Request, res: Response): Promise<void> => {
-    const requestId = req.headers['x-request-id'] as string || 'unknown';
+    const requestId = (req.headers['x-request-id'] as string) || 'unknown';
     const startTime = Date.now();
 
     try {
@@ -177,7 +204,10 @@ export const createParseController = (service: TreeSitterService) => {
         throw new Error('Missing or invalid field: query');
       }
 
-      log.info('ParseController', `Validating query - RequestID: ${requestId}, Language: ${language}`);
+      log.info(
+        'ParseController',
+        `Validating query - RequestID: ${requestId}, Language: ${language}`,
+      );
 
       // 创建一个简单的解析请求来验证查询
       const testRequest: ParseRequest = {
@@ -188,12 +218,15 @@ export const createParseController = (service: TreeSitterService) => {
 
       // 尝试处理请求以验证查询
       const result = await service.processRequest(testRequest);
-      
+
       const duration = Date.now() - startTime;
 
       if (result.success) {
-        log.info('ParseController', `Query validation successful - RequestID: ${requestId}, Duration: ${duration}ms`);
-        
+        log.info(
+          'ParseController',
+          `Query validation successful - RequestID: ${requestId}, Duration: ${duration}ms`,
+        );
+
         const response = {
           success: true,
           data: {
@@ -208,8 +241,11 @@ export const createParseController = (service: TreeSitterService) => {
         res.setHeader('X-Processing-Time', `${duration}ms`);
         res.status(200).json(response);
       } else {
-        log.warn('ParseController', `Query validation failed - RequestID: ${requestId}, Duration: ${duration}ms, Errors: ${result.errors.join(', ')}`);
-        
+        log.warn(
+          'ParseController',
+          `Query validation failed - RequestID: ${requestId}, Duration: ${duration}ms, Errors: ${result.errors.join(', ')}`,
+        );
+
         const response = {
           success: false,
           data: {
@@ -226,10 +262,14 @@ export const createParseController = (service: TreeSitterService) => {
       }
     } catch (error) {
       const duration = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      log.error('ParseController', `Query validation error - RequestID: ${requestId}, Duration: ${duration}ms, Error: ${errorMessage}`);
-      
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      log.error(
+        'ParseController',
+        `Query validation error - RequestID: ${requestId}, Duration: ${duration}ms, Error: ${errorMessage}`,
+      );
+
       const response = {
         success: false,
         errors: [errorMessage],

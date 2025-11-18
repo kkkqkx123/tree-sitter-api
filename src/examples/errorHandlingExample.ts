@@ -12,7 +12,7 @@ import {
   resourceGuard,
   errorLogger,
   asyncErrorHandler,
-  healthCheck
+  healthCheck,
 } from '@/middleware';
 import { TreeSitterService } from '@/core/TreeSitterService';
 import { ErrorSeverity, ErrorType, TreeSitterError } from '@/types/errors';
@@ -41,47 +41,56 @@ export function createAppWithErrorHandling(): express.Application {
   app.get('/api/health', healthCheck(memoryMonitor, errorHandler));
 
   // 解析API端点
-  app.post('/api/parse', asyncErrorHandler(async (req: express.Request, res: express.Response) => {
-    try {
-      const result = await treeSitterService.processRequest(req.body);
-      res.json(result);
-    } catch (error) {
-      // 这里可以添加特定的错误处理逻辑
-      throw error;
-    }
-  }));
+  app.post(
+    '/api/parse',
+    asyncErrorHandler(async (req: express.Request, res: express.Response) => {
+      try {
+        const result = await treeSitterService.processRequest(req.body);
+        res.json(result);
+      } catch (error) {
+        // 这里可以添加特定的错误处理逻辑
+        throw error;
+      }
+    }),
+  );
 
   // 错误统计端点
-  app.get('/api/errors/stats', (_req: express.Request, res: express.Response) => {
-    const stats = errorHandler.getErrorStats();
-    res.json(stats);
-  });
+  app.get(
+    '/api/errors/stats',
+    (_req: express.Request, res: express.Response) => {
+      const stats = errorHandler.getErrorStats();
+      res.json(stats);
+    },
+  );
 
   // 手动触发错误恢复的端点（仅用于测试）
-  app.post('/api/errors/recover', asyncErrorHandler(async (req: express.Request, res: express.Response) => {
-    const { errorType, message } = req.body;
+  app.post(
+    '/api/errors/recover',
+    asyncErrorHandler(async (req: express.Request, res: express.Response) => {
+      const { errorType, message } = req.body;
 
-    if (!errorType || !message) {
-      throw new TreeSitterError(
-        ErrorType.VALIDATION_ERROR,
-        ErrorSeverity.LOW,
-        'errorType and message are required'
+      if (!errorType || !message) {
+        throw new TreeSitterError(
+          ErrorType.VALIDATION_ERROR,
+          ErrorSeverity.LOW,
+          'errorType and message are required',
+        );
+      }
+
+      const testError = new TreeSitterError(
+        errorType as ErrorType,
+        ErrorSeverity.MEDIUM,
+        message,
       );
-    }
 
-    const testError = new TreeSitterError(
-      errorType as ErrorType,
-      ErrorSeverity.MEDIUM,
-      message
-    );
-
-    const recoveryResult = await recoveryStrategy.attemptRecovery(testError);
-    res.json({
-      success: true,
-      error: testError.toJSON(),
-      recovery: recoveryResult
-    });
-  }));
+      const recoveryResult = await recoveryStrategy.attemptRecovery(testError);
+      res.json({
+        success: true,
+        error: testError.toJSON(),
+        recovery: recoveryResult,
+      });
+    }),
+  );
 
   // 全局错误处理中间件（必须放在最后）
   app.use(globalErrorHandler(errorHandler, recoveryStrategy));
@@ -100,7 +109,10 @@ export function errorHandlingExamples() {
   try {
     throw new Error('Something went wrong');
   } catch (error) {
-    const treeSitterError = errorHandler.handleError(error as Error, 'example-context');
+    const treeSitterError = errorHandler.handleError(
+      error as Error,
+      'example-context',
+    );
     console.log('Handled error:', treeSitterError.toJSON());
   }
 
@@ -108,8 +120,15 @@ export function errorHandlingExamples() {
   try {
     throw new Error('Unsupported language: cobol');
   } catch (error) {
-    const treeSitterError = errorHandler.handleError(error as Error, 'language-check');
-    console.log('Language error:', treeSitterError.type, treeSitterError.severity);
+    const treeSitterError = errorHandler.handleError(
+      error as Error,
+      'language-check',
+    );
+    console.log(
+      'Language error:',
+      treeSitterError.type,
+      treeSitterError.severity,
+    );
   }
 
   // 示例3: 获取错误统计
@@ -134,7 +153,7 @@ export async function recoveryStrategyExamples() {
   const memoryError = new TreeSitterError(
     ErrorType.MEMORY_ERROR,
     ErrorSeverity.HIGH,
-    'Out of memory'
+    'Out of memory',
   );
 
   const memoryRecovery = await recoveryStrategy.attemptRecovery(memoryError);
@@ -144,7 +163,7 @@ export async function recoveryStrategyExamples() {
   const parseError = new TreeSitterError(
     ErrorType.PARSE_ERROR,
     ErrorSeverity.MEDIUM,
-    'Invalid syntax'
+    'Invalid syntax',
   );
 
   const parseRecovery = await recoveryStrategy.attemptRecovery(parseError);

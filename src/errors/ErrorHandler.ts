@@ -1,4 +1,9 @@
-import { ErrorType, ErrorSeverity, TreeSitterError, ErrorStatistics } from '@/types/errors';
+import {
+  ErrorType,
+  ErrorSeverity,
+  TreeSitterError,
+  ErrorStatistics,
+} from '@/types/errors';
 import { log } from '@/utils/Logger';
 
 /**
@@ -42,39 +47,54 @@ export class ErrorHandler {
     const message = error.message.toLowerCase();
 
     // 根据错误消息内容分类
-    if (message.includes('unsupported language') || message.includes('language not supported')) {
+    if (
+      message.includes('unsupported language') ||
+      message.includes('language not supported')
+    ) {
       return new TreeSitterError(
         ErrorType.UNSUPPORTED_LANGUAGE,
         ErrorSeverity.MEDIUM,
         error.message,
-        { originalError: error.name }
+        { originalError: error.name },
       );
     }
 
-    if (message.includes('invalid query') || message.includes('query syntax') || message.includes('query error')) {
+    if (
+      message.includes('invalid query') ||
+      message.includes('query syntax') ||
+      message.includes('query error')
+    ) {
       return new TreeSitterError(
         ErrorType.QUERY_ERROR,
         ErrorSeverity.MEDIUM,
         error.message,
-        { originalError: error.name }
+        { originalError: error.name },
       );
     }
 
-    if (message.includes('parse') || message.includes('syntax') || message.includes('parse error')) {
+    if (
+      message.includes('parse') ||
+      message.includes('syntax') ||
+      message.includes('parse error')
+    ) {
       return new TreeSitterError(
         ErrorType.PARSE_ERROR,
         ErrorSeverity.MEDIUM,
         error.message,
-        { originalError: error.name }
+        { originalError: error.name },
       );
     }
 
-    if (message.includes('memory') || message.includes('out of memory') || message.includes('heap')) {
+    if (
+      message.includes('memory') ||
+      message.includes('out of memory') ||
+      message.includes('heap')
+    ) {
       return new TreeSitterError(
         ErrorType.MEMORY_ERROR,
         ErrorSeverity.HIGH,
         error.message,
-        { originalError: error.name }
+        { originalError: error.name },
       );
     }
 
@@ -83,25 +103,33 @@ export class ErrorHandler {
         ErrorType.TIMEOUT_ERROR,
         ErrorSeverity.MEDIUM,
         error.message,
-        { originalError: error.name }
+        { originalError: error.name },
       );
     }
 
-    if (message.includes('resource') || message.includes('limit') || message.includes('quota')) {
+    if (
+      message.includes('resource') ||
+      message.includes('limit') ||
+      message.includes('quota')
+    ) {
       return new TreeSitterError(
         ErrorType.RESOURCE_ERROR,
         ErrorSeverity.HIGH,
         error.message,
-        { originalError: error.name }
+        { originalError: error.name },
       );
     }
 
-    if (message.includes('validation') || message.includes('invalid') || message.includes('required')) {
+    if (
+      message.includes('validation') ||
+      message.includes('invalid') ||
+      message.includes('required')
+    ) {
       return new TreeSitterError(
         ErrorType.VALIDATION_ERROR,
         ErrorSeverity.LOW,
         error.message,
-        { originalError: error.name }
+        { originalError: error.name },
       );
     }
 
@@ -110,7 +138,7 @@ export class ErrorHandler {
       ErrorType.INTERNAL_ERROR,
       ErrorSeverity.HIGH,
       error.message,
-      { originalError: error.name, stack: error.stack }
+      { originalError: error.name, stack: error.stack },
     );
   }
 
@@ -164,10 +192,13 @@ export class ErrorHandler {
    */
   getErrorStats(): ErrorStatistics {
     const recentErrors = this.lastErrors.filter(
-      e => Date.now() - e.timestamp < 300000 // 最近5分钟
+      e => Date.now() - e.timestamp < 300000, // 最近5分钟
     );
 
-    const errorCounts: Record<ErrorType, number> = {} as Record<ErrorType, number>;
+    const errorCounts: Record<ErrorType, number> = {} as Record<
+      ErrorType,
+      number
+    >;
     for (const [type, count] of this.errorCounts) {
       errorCounts[type] = count;
     }
@@ -177,7 +208,7 @@ export class ErrorHandler {
       recentErrors: recentErrors.length,
       errorCounts,
       mostCommonError: this.getMostCommonError(),
-      errorHistory: this.lastErrors.map(e => e.error.toJSON())
+      errorHistory: this.lastErrors.map(e => e.error.toJSON()),
     };
   }
 
@@ -214,7 +245,9 @@ export class ErrorHandler {
    */
   isErrorRateHigh(threshold: number = 10): boolean {
     const oneMinuteAgo = Date.now() - 60000;
-    const recentErrors = this.lastErrors.filter(e => e.timestamp > oneMinuteAgo);
+    const recentErrors = this.lastErrors.filter(
+      e => e.timestamp > oneMinuteAgo,
+    );
     return recentErrors.length > threshold;
   }
 }

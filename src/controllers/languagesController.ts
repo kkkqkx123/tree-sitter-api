@@ -15,15 +15,21 @@ export const createLanguagesController = (service: TreeSitterService) => {
   /**
    * 获取支持的语言列表
    */
-  const getSupportedLanguages = async (req: Request, res: Response): Promise<void> => {
-    const requestId = req.headers['x-request-id'] as string || 'unknown';
-    
+  const getSupportedLanguages = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const requestId = (req.headers['x-request-id'] as string) || 'unknown';
+
     try {
-      log.debug('LanguagesController', `Getting supported languages - RequestID: ${requestId}`);
+      log.debug(
+        'LanguagesController',
+        `Getting supported languages - RequestID: ${requestId}`,
+      );
 
       // 获取支持的语言列表
       const languages = service.getSupportedLanguages();
-      
+
       // 构建响应
       const response: ApiResponse<LanguagesResponse> = {
         success: true,
@@ -35,9 +41,13 @@ export const createLanguagesController = (service: TreeSitterService) => {
 
       res.status(200).json(response);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      log.error('LanguagesController', `Failed to get supported languages - RequestID: ${requestId}, Error: ${errorMessage}`);
-      
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      log.error(
+        'LanguagesController',
+        `Failed to get supported languages - RequestID: ${requestId}, Error: ${errorMessage}`,
+      );
+
       const response: ApiResponse<null> = {
         success: false,
         errors: [errorMessage],
@@ -51,12 +61,18 @@ export const createLanguagesController = (service: TreeSitterService) => {
   /**
    * 获取语言详细信息
    */
-  const getLanguageInfo = async (req: Request, res: Response): Promise<void> => {
-    const requestId = req.headers['x-request-id'] as string || 'unknown';
+  const getLanguageInfo = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const requestId = (req.headers['x-request-id'] as string) || 'unknown';
     const { language } = req.params;
-    
+
     try {
-      log.debug('LanguagesController', `Getting language info - RequestID: ${requestId}, Language: ${language}`);
+      log.debug(
+        'LanguagesController',
+        `Getting language info - RequestID: ${requestId}, Language: ${language}`,
+      );
 
       if (!language) {
         throw new Error('Language parameter is required');
@@ -70,7 +86,7 @@ export const createLanguagesController = (service: TreeSitterService) => {
 
       // 获取语言信息
       const languageInfo = getLanguageDetails(language as SupportedLanguage);
-      
+
       // 构建响应
       const response = {
         success: true,
@@ -80,16 +96,22 @@ export const createLanguagesController = (service: TreeSitterService) => {
 
       res.status(200).json(response);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      log.error('LanguagesController', `Failed to get language info - RequestID: ${requestId}, Language: ${language}, Error: ${errorMessage}`);
-      
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      log.error(
+        'LanguagesController',
+        `Failed to get language info - RequestID: ${requestId}, Language: ${language}, Error: ${errorMessage}`,
+      );
+
       const response = {
         success: false,
         errors: [errorMessage],
         timestamp: new Date().toISOString(),
       };
 
-      const statusCode = errorMessage.includes('Unsupported language') ? 404 : 500;
+      const statusCode = errorMessage.includes('Unsupported language')
+        ? 404
+        : 500;
       res.status(statusCode).json(response);
     }
   };
@@ -97,27 +119,37 @@ export const createLanguagesController = (service: TreeSitterService) => {
   /**
    * 预加载语言
    */
-  const preloadLanguage = async (req: Request, res: Response): Promise<void> => {
-    const requestId = req.headers['x-request-id'] as string || 'unknown';
+  const preloadLanguage = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const requestId = (req.headers['x-request-id'] as string) || 'unknown';
     const { languages } = req.body;
-    
+
     try {
-      log.debug('LanguagesController', `Preloading languages - RequestID: ${requestId}, Languages: ${languages?.join(', ') || 'all'}`);
+      log.debug(
+        'LanguagesController',
+        `Preloading languages - RequestID: ${requestId}, Languages: ${languages?.join(', ') || 'all'}`,
+      );
 
       let languagesToPreload: SupportedLanguage[];
-      
+
       if (!languages) {
         // 预加载所有语言
         languagesToPreload = service.getSupportedLanguages();
       } else if (Array.isArray(languages)) {
         // 验证语言列表
         const supportedLanguages = service.getSupportedLanguages();
-        const invalidLanguages = languages.filter(lang => !supportedLanguages.includes(lang as SupportedLanguage));
-        
+        const invalidLanguages = languages.filter(
+          lang => !supportedLanguages.includes(lang as SupportedLanguage),
+        );
+
         if (invalidLanguages.length > 0) {
-          throw new Error(`Unsupported languages: ${invalidLanguages.join(', ')}`);
+          throw new Error(
+            `Unsupported languages: ${invalidLanguages.join(', ')}`,
+          );
         }
-        
+
         languagesToPreload = languages as SupportedLanguage[];
       } else {
         throw new Error('Languages must be an array');
@@ -142,16 +174,22 @@ export const createLanguagesController = (service: TreeSitterService) => {
 
       res.status(200).json(response);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      log.error('LanguagesController', `Failed to preload languages - RequestID: ${requestId}, Error: ${errorMessage}`);
-      
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      log.error(
+        'LanguagesController',
+        `Failed to preload languages - RequestID: ${requestId}, Error: ${errorMessage}`,
+      );
+
       const response = {
         success: false,
         errors: [errorMessage],
         timestamp: new Date().toISOString(),
       };
 
-      const statusCode = errorMessage.includes('Unsupported languages') ? 400 : 500;
+      const statusCode = errorMessage.includes('Unsupported languages')
+        ? 400
+        : 500;
       res.status(statusCode).json(response);
     }
   };
@@ -159,12 +197,18 @@ export const createLanguagesController = (service: TreeSitterService) => {
   /**
    * 获取语言查询示例
    */
-  const getLanguageExamples = async (req: Request, res: Response): Promise<void> => {
-    const requestId = req.headers['x-request-id'] as string || 'unknown';
+  const getLanguageExamples = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const requestId = (req.headers['x-request-id'] as string) || 'unknown';
     const { language } = req.params;
-    
+
     try {
-      log.debug('LanguagesController', `Getting language examples - RequestID: ${requestId}, Language: ${language}`);
+      log.debug(
+        'LanguagesController',
+        `Getting language examples - RequestID: ${requestId}, Language: ${language}`,
+      );
 
       if (!language) {
         throw new Error('Language parameter is required');
@@ -178,7 +222,7 @@ export const createLanguagesController = (service: TreeSitterService) => {
 
       // 获取语言示例
       const examples = getLanguageQueryExamples(language as SupportedLanguage);
-      
+
       // 构建响应
       const response = {
         success: true,
@@ -191,16 +235,22 @@ export const createLanguagesController = (service: TreeSitterService) => {
 
       res.status(200).json(response);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      log.error('LanguagesController', `Failed to get language examples - RequestID: ${requestId}, Language: ${language}, Error: ${errorMessage}`);
-      
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      log.error(
+        'LanguagesController',
+        `Failed to get language examples - RequestID: ${requestId}, Language: ${language}, Error: ${errorMessage}`,
+      );
+
       const response = {
         success: false,
         errors: [errorMessage],
         timestamp: new Date().toISOString(),
       };
 
-      const statusCode = errorMessage.includes('Unsupported language') ? 404 : 500;
+      const statusCode = errorMessage.includes('Unsupported language')
+        ? 404
+        : 500;
       res.status(statusCode).json(response);
     }
   };
@@ -262,7 +312,16 @@ function getLanguageDetails(language: SupportedLanguage): any {
     },
     cpp: {
       name: 'C++',
-      extensions: ['.cpp', '.cxx', '.cc', '.c++', '.hpp', '.hxx', '.hh', '.h++'],
+      extensions: [
+        '.cpp',
+        '.cxx',
+        '.cc',
+        '.c++',
+        '.hpp',
+        '.hxx',
+        '.hh',
+        '.h++',
+      ],
       mimeType: 'text/x-c++src',
       description: 'C++ programming language',
       popularity: 'high',
@@ -290,13 +349,15 @@ function getLanguageDetails(language: SupportedLanguage): any {
     },
   };
 
-  return languageDetails[language] || {
-    name: language,
-    extensions: [],
-    mimeType: 'text/plain',
-    description: 'Unknown language',
-    popularity: 'low',
-  };
+  return (
+    languageDetails[language] || {
+      name: language,
+      extensions: [],
+      mimeType: 'text/plain',
+      description: 'Unknown language',
+      popularity: 'low',
+    }
+  );
 }
 
 /**
@@ -313,7 +374,8 @@ function getLanguageQueryExamples(language: SupportedLanguage): any[] {
       {
         name: 'Variable declarations',
         description: 'Find all variable declarations',
-        query: '(variable_declarator name: (identifier) @name value: _ @value) @variable',
+        query:
+          '(variable_declarator name: (identifier) @name value: _ @value) @variable',
       },
       {
         name: 'Class declarations',
@@ -325,12 +387,14 @@ function getLanguageQueryExamples(language: SupportedLanguage): any[] {
       {
         name: 'Interface declarations',
         description: 'Find all interface declarations',
-        query: '(interface_declaration name: (type_identifier) @name) @interface',
+        query:
+          '(interface_declaration name: (type_identifier) @name) @interface',
       },
       {
         name: 'Type aliases',
         description: 'Find all type aliases',
-        query: '(type_alias_declaration name: (type_identifier) @name) @type_alias',
+        query:
+          '(type_alias_declaration name: (type_identifier) @name) @type_alias',
       },
     ],
     python: [
@@ -371,7 +435,8 @@ function getLanguageQueryExamples(language: SupportedLanguage): any[] {
       {
         name: 'Struct types',
         description: 'Find all struct type declarations',
-        query: '(type_spec name: (type_identifier) @name type: (struct_type) @struct) @type_declaration',
+        query:
+          '(type_spec name: (type_identifier) @name type: (struct_type) @struct) @type_declaration',
       },
     ],
     rust: [
@@ -390,7 +455,8 @@ function getLanguageQueryExamples(language: SupportedLanguage): any[] {
       {
         name: 'Function definitions',
         description: 'Find all function definitions',
-        query: '(function_definition declarator: (function_declarator declarator: (identifier) @name)) @function',
+        query:
+          '(function_definition declarator: (function_declarator declarator: (identifier) @name)) @function',
       },
       {
         name: 'Class definitions',
@@ -402,7 +468,8 @@ function getLanguageQueryExamples(language: SupportedLanguage): any[] {
       {
         name: 'Function definitions',
         description: 'Find all function definitions',
-        query: '(function_definition declarator: (function_declarator declarator: (identifier) @name)) @function',
+        query:
+          '(function_definition declarator: (function_declarator declarator: (identifier) @name)) @function',
       },
       {
         name: 'Struct declarations',

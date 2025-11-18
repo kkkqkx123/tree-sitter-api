@@ -10,11 +10,14 @@ import { log } from '@/utils/Logger';
 export class ParserPool {
   private pools: Map<SupportedLanguage, Parser[]> = new Map();
   private activeParsers: Set<Parser> = new Set();
+  private parserTimestamps: Map<Parser, number> = new Map();
   private maxPoolSize: number;
+  private parserTimeout: number;
   private cleanupInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     this.maxPoolSize = EnvConfig.PARSER_POOL_SIZE;
+    this.parserTimeout = EnvConfig.PARSER_TIMEOUT;
     this.startCleanupTimer();
   }
 
@@ -23,18 +26,22 @@ export class ParserPool {
    */
   getParser(language: SupportedLanguage): Parser {
     // 尝试从池中获取
-    const languagePool = this.pools.get(language) || [];
+    const languagePool = this.pools.get(language);
 
-    if (languagePool.length > 0) {
+    if (languagePool && languagePool.length > 0) {
       const parser = languagePool.pop()!;
-      this.pools.set(language, languagePool);
+      // 优化: 移除冗余的 this.pools.set，因为 pop() 直接修改了原数组
       this.activeParsers.add(parser);
+      // 记录解析器获取时间
+      this.parserTimestamps.set(parser, Date.now());
       return parser;
     }
 
     // 创建新的解析器
     const parser = new Parser();
     this.activeParsers.add(parser);
+    // 记录解析器获取时间
+    this.parserTimestamps.set(parser, Date.now());
     return parser;
   }
 
@@ -47,14 +54,23 @@ export class ParserPool {
     }
 
     this.activeParsers.delete(parser);
+    // 移除时间戳记录
+    this.parserTimestamps.delete(parser);
 
-    const languagePool = this.pools.get(language) || [];
+    // 优化: 使用更高效的"获取或创建"模式
+    let languagePool = this.pools.get(language);
+    if (!languagePool) {
+      languagePool = [];
+      this.pools.set(language, languagePool);
+    } else {
+      // 池已存在，直接使用即可，无需再次 set
+    }
 
     // 检查池大小限制
     if (languagePool.length < this.maxPoolSize) {
       // 将解析器添加到池中，不重置状态避免出错
       languagePool.push(parser);
-      this.pools.set(language, languagePool);
+      // 优化: 完全移除冗余的 set 操作，因为 push 直接修改了原数组
     } else {
       // 池已满，销毁解析器
       this.destroyParser(parser);
@@ -66,6 +82,9 @@ export class ParserPool {
    */
   private destroyParser(parser: Parser): void {
     try {
+      // 移除时间戳记录
+      this.parserTimestamps.delete(parser);
+
       // 尝试调用Tree-sitter的delete方法
       if (typeof (parser as any).delete === 'function') {
         (parser as any).delete();
@@ -98,6 +117,9 @@ export class ParserPool {
     // 清理活跃解析器
     this.activeParsers.forEach(parser => this.destroyParser(parser));
     this.activeParsers.clear();
+
+    // 清理时间戳记录
+    this.parserTimestamps.clear();
   }
 
   /**
@@ -147,7 +169,8 @@ export class ParserPool {
     }
 
     // 检查内存使用是否合理
-    if (stats.memoryUsage.estimatedMemoryMB > 50) { // 50MB阈值
+    if (stats.memoryUsage.estimatedMemoryMB > 50) {
+      // 50MB阈值
       return false;
     }
 
@@ -177,14 +200,14 @@ export class ParserPool {
    * 执行周期性清理
    */
   private performPeriodicCleanup(): void {
-    // const timeoutThreshold = now - this.parserTimeout;
+    const now = Date.now();
+    const timeoutThreshold = now - this.parserTimeout;
 
     // 清理超时的活跃解析器
     const timedOutParsers: Parser[] = [];
     this.activeParsers.forEach(parser => {
-      // 这里简化处理，实际应该跟踪每个解析器的使用时间
-      // 由于Tree-sitter解析器没有直接的时间戳，我们使用启发式方法
-      if (Math.random() < 0.1) { // 10%的概率被认为是超时的
+      const timestamp = this.parserTimestamps.get(parser);
+      if (timestamp && timestamp < timeoutThreshold) {
         timedOutParsers.push(parser);
       }
     });
@@ -197,15 +220,25 @@ export class ParserPool {
     // 如果池过大，清理一些解析器
     this.pools.forEach((parsers, language) => {
       if (parsers.length > this.maxPoolSize / 2) {
-        const toRemove = parsers.splice(0, parsers.length - Math.floor(this.maxPoolSize / 2));
+        const keepCount = Math.floor(this.maxPoolSize / 2);
+        // 获取需要保留的部分（最后 keepCount 个）
+        const toKeep = parsers.slice(-keepCount);
+        // 获取需要销毁的部分
+        const toRemove = parsers.slice(0, parsers.length - keepCount);
+        
         toRemove.forEach(parser => this.destroyParser(parser));
-        this.pools.set(language, parsers);
+        
+        // 必须用 set，因为 toKeep 是一个新数组
+        this.pools.set(language, toKeep);
       }
     });
 
     // 记录清理结果
     if (timedOutParsers.length > 0) {
-      log.info('LightweightParserPool', `Cleaned up ${timedOutParsers.length} timed out parsers`);
+      log.info(
+        'LightweightParserPool',
+        `Cleaned up ${timedOutParsers.length} timed out parsers`,
+      );
     }
   }
 
@@ -219,7 +252,11 @@ export class ParserPool {
         // 立即释放回池
         this.releaseParser(parser, language);
       } catch (error) {
-        log.warn('LightweightParserPool', `Failed to warmup pool for ${language}:`, error);
+        log.warn(
+          'LightweightParserPool',
+          `Failed to warmup pool for ${language}:`,
+          error,
+        );
       }
     });
 
@@ -245,7 +282,10 @@ export class ParserPool {
    * 强制回收所有解析器
    */
   emergencyCleanup(): void {
-    log.warn('LightweightParserPool', 'Performing emergency parser pool cleanup');
+    log.warn(
+      'LightweightParserPool',
+      'Performing emergency parser pool cleanup',
+    );
     this.cleanup();
 
     // 强制垃圾回收

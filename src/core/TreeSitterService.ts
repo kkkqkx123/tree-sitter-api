@@ -7,7 +7,11 @@ import { ParserPool } from './ParserPool';
 import { MemoryMonitor } from './MemoryMonitor';
 import { ResourceCleaner } from './ResourceCleaner';
 import { ParseRequest, ParseResult, MatchResult } from '@/types/api';
-import { SupportedLanguage, TreeSitterTree, TreeSitterQuery } from '@/types/treeSitter';
+import {
+  SupportedLanguage,
+  TreeSitterTree,
+  TreeSitterQuery,
+} from '@/types/treeSitter';
 import { TreeSitterError, ErrorType, ErrorSeverity } from '@/types/errors';
 import { EnvConfig } from '@/config/env';
 import { CleanupStrategy } from '@/config/memory';
@@ -76,11 +80,15 @@ export class TreeSitterService {
    * 验证请求
    */
   private validateRequest(request: ParseRequest): void {
-    if (!request.language || request.code === undefined || request.code === null) {
+    if (
+      !request.language ||
+      request.code === undefined ||
+      request.code === null
+    ) {
       throw new TreeSitterError(
         ErrorType.VALIDATION_ERROR,
         ErrorSeverity.MEDIUM,
-        'Missing required fields: language or code'
+        'Missing required fields: language or code',
       );
     }
 
@@ -88,7 +96,7 @@ export class TreeSitterService {
       throw new TreeSitterError(
         ErrorType.UNSUPPORTED_LANGUAGE,
         ErrorSeverity.MEDIUM,
-        `Unsupported language: ${request.language}`
+        `Unsupported language: ${request.language}`,
       );
     }
 
@@ -96,7 +104,7 @@ export class TreeSitterService {
       throw new TreeSitterError(
         ErrorType.VALIDATION_ERROR,
         ErrorSeverity.MEDIUM,
-        `Code length exceeds maximum allowed size of ${EnvConfig.MAX_CODE_LENGTH} bytes`
+        `Code length exceeds maximum allowed size of ${EnvConfig.MAX_CODE_LENGTH} bytes`,
       );
     }
 
@@ -105,7 +113,7 @@ export class TreeSitterService {
       throw new TreeSitterError(
         ErrorType.VALIDATION_ERROR,
         ErrorSeverity.MEDIUM,
-        `Too many queries. Maximum allowed is 10, got ${queryCount}`
+        `Too many queries. Maximum allowed is 10, got ${queryCount}`,
       );
     }
   }
@@ -128,7 +136,9 @@ export class TreeSitterService {
 
     try {
       // 获取语言模块
-      const languageModule = await this.languageManager.getLanguage(language as SupportedLanguage);
+      const languageModule = await this.languageManager.getLanguage(
+        language as SupportedLanguage,
+      );
 
       // 获取解析器
       parser = this.parserPool.getParser(language as SupportedLanguage);
@@ -157,7 +167,7 @@ export class TreeSitterService {
         throw new TreeSitterError(
           ErrorType.PARSE_ERROR,
           ErrorSeverity.MEDIUM,
-          'Failed to parse code: invalid tree structure'
+          'Failed to parse code: invalid tree structure',
         );
       }
 
@@ -167,7 +177,10 @@ export class TreeSitterService {
         return { success: true, matches: [], errors: [] };
       }
 
-      log.info('TreeSitterService', `Parsed tree with type: ${tree.rootNode.type}, childCount: ${tree.rootNode.childCount}`);
+      log.info(
+        'TreeSitterService',
+        `Parsed tree with type: ${tree.rootNode.type}, childCount: ${tree.rootNode.childCount}`,
+      );
 
       // 执行查询
       const allQueries = query ? [query, ...queries] : queries;
@@ -177,19 +190,29 @@ export class TreeSitterService {
         return { success: true, matches: [], errors: [] };
       }
 
-      log.info('TreeSitterService', `Executing ${allQueries.length} queries: ${allQueries.join(', ')}`);
-      const matches = await this.executeQueries(tree, allQueries, languageModule);
+      log.info(
+        'TreeSitterService',
+        `Executing ${allQueries.length} queries: ${allQueries.join(', ')}`,
+      );
+      const matches = await this.executeQueries(
+        tree,
+        allQueries,
+        languageModule,
+      );
       log.info('TreeSitterService', `Found ${matches.length} matches`);
 
       return { success: true, matches, errors: [] };
-
     } finally {
       // 确保所有资源都被清理
       for (const cleanupFn of cleanup) {
         try {
           cleanupFn();
         } catch (error) {
-          log.warn('TreeSitterService', 'Error during resource cleanup:', error);
+          log.warn(
+            'TreeSitterService',
+            'Error during resource cleanup:',
+            error,
+          );
         }
       }
     }
@@ -198,7 +221,11 @@ export class TreeSitterService {
   /**
    * 执行查询
    */
-  private async executeQueries(tree: TreeSitterTree, queries: string[], languageModule: any): Promise<MatchResult[]> {
+  private async executeQueries(
+    tree: TreeSitterTree,
+    queries: string[],
+    languageModule: any,
+  ): Promise<MatchResult[]> {
     const matches: MatchResult[] = [];
 
     for (const queryString of queries) {
@@ -206,7 +233,10 @@ export class TreeSitterService {
         // 使用正确的方式创建查询 - Tree-sitter的查询需要通过language.query()方式创建
         const query = languageModule.query(queryString) as TreeSitterQuery;
         if (!query) {
-          log.warn('TreeSitterService', `Failed to create query for: ${queryString}`);
+          log.warn(
+            'TreeSitterService',
+            `Failed to create query for: ${queryString}`,
+          );
           continue;
         }
 
@@ -223,7 +253,10 @@ export class TreeSitterService {
 
           // 检查匹配结果
           if (!queryMatches || !Array.isArray(queryMatches)) {
-            log.warn('TreeSitterService', `Query returned invalid matches: ${queryMatches}`);
+            log.warn(
+              'TreeSitterService',
+              `Query returned invalid matches: ${queryMatches}`,
+            );
             continue;
           }
 
@@ -262,7 +295,10 @@ export class TreeSitterService {
           this.destroyQuery(query);
         }
       } catch (error) {
-        log.warn('TreeSitterService', `Query execution failed: ${error instanceof Error ? error.message : String(error)}`);
+        log.warn(
+          'TreeSitterService',
+          `Query execution failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
         // 继续处理其他查询，不中断整个请求
       }
     }
@@ -270,12 +306,14 @@ export class TreeSitterService {
     return matches;
   }
 
-
   /**
    * 处理严重内存状态
    */
   private async handleCriticalMemory(): Promise<void> {
-    log.warn('TreeSitterService', 'Critical memory usage detected, performing emergency cleanup');
+    log.warn(
+      'TreeSitterService',
+      'Critical memory usage detected, performing emergency cleanup',
+    );
 
     // 再次检查内存状态
     const memoryStatus = this.memoryMonitor.checkMemory();
@@ -283,13 +321,13 @@ export class TreeSitterService {
       throw new TreeSitterError(
         ErrorType.MEMORY_ERROR,
         ErrorSeverity.CRITICAL,
-        'Service temporarily unavailable: out of memory'
+        'Service temporarily unavailable: out of memory',
       );
     }
   }
   /**
-  * 处理错误
-  */
+   * 处理错误
+   */
   private handleError(error: unknown, _request: ParseRequest): ParseResult {
     if (error instanceof TreeSitterError) {
       return {
@@ -356,14 +394,19 @@ export class TreeSitterService {
     const memory = this.memoryMonitor.checkMemory();
     const parserPool = this.parserPool.getPoolStats();
     const languageManager = this.languageManager.getStatus();
-    const errorRate = this.requestCount > 0 ? (this.errorCount / this.requestCount) * 100 : 0;
+    const errorRate =
+      this.requestCount > 0 ? (this.errorCount / this.requestCount) * 100 : 0;
 
     // 确定整体状态
     let status: 'healthy' | 'warning' | 'error' = 'healthy';
 
     if (memory.level === 'critical' || errorRate > 20) {
       status = 'error';
-    } else if (memory.level === 'warning' || errorRate > 10 || !this.parserPool.isHealthy()) {
+    } else if (
+      memory.level === 'warning' ||
+      errorRate > 10 ||
+      !this.parserPool.isHealthy()
+    ) {
       status = 'warning';
     }
 
@@ -402,7 +445,9 @@ export class TreeSitterService {
   /**
    * 执行内存清理
    */
-  async performCleanup(strategy: CleanupStrategy = CleanupStrategy.BASIC): Promise<{
+  async performCleanup(
+    strategy: CleanupStrategy = CleanupStrategy.BASIC,
+  ): Promise<{
     memoryFreed: number;
     duration: number;
     success: boolean;

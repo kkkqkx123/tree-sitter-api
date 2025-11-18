@@ -5,7 +5,11 @@
 import { Router, Request, Response } from 'express';
 import { TreeSitterService } from '@/core/TreeSitterService';
 import { createParseController } from '@/controllers/parseController';
-import { validateParseRequest, requestSizeLimit, defaultConcurrencyLimiter } from '@/middleware/validation';
+import {
+  validateParseRequest,
+  requestSizeLimit,
+  defaultConcurrencyLimiter,
+} from '@/middleware/validation';
 import { log } from '@/utils/Logger';
 
 /**
@@ -26,7 +30,7 @@ export default function createParseRoutes(service: TreeSitterService): Router {
     validateParseRequest,
     async (req: Request, res: Response) => {
       await controller.parseCode(req, res);
-    }
+    },
   );
 
   /**
@@ -39,7 +43,7 @@ export default function createParseRoutes(service: TreeSitterService): Router {
     defaultConcurrencyLimiter.middleware(),
     async (req: Request, res: Response) => {
       await controller.parseBatch(req, res);
-    }
+    },
   );
 
   /**
@@ -51,13 +55,16 @@ export default function createParseRoutes(service: TreeSitterService): Router {
     requestSizeLimit(1024 * 1024), // 1MB for validation requests
     async (req: Request, res: Response) => {
       await controller.validateQuery(req, res);
-    }
+    },
   );
 
   // 路由级别的中间件 - 记录路由访问
   router.use((req: Request, _res: Response, next: any) => {
-    const requestId = req.headers['x-request-id'] as string || 'unknown';
-    log.debug('ParseRoutes', `Parse route accessed - RequestID: ${requestId}, Path: ${req.path}, Method: ${req.method}`);
+    const requestId = (req.headers['x-request-id'] as string) || 'unknown';
+    log.debug(
+      'ParseRoutes',
+      `Parse route accessed - RequestID: ${requestId}, Path: ${req.path}, Method: ${req.method}`,
+    );
     next();
   });
 

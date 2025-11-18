@@ -35,7 +35,10 @@ class TreeSitterServer {
     this.memoryMonitor = new MemoryMonitor();
     this.resourceCleaner = new ResourceCleaner();
     this.errorHandler = new ErrorHandler();
-    this.recoveryStrategy = new RecoveryStrategy(this.resourceCleaner, this.memoryMonitor);
+    this.recoveryStrategy = new RecoveryStrategy(
+      this.resourceCleaner,
+      this.memoryMonitor,
+    );
 
     // 设置资源清理器的依赖
     this.resourceCleaner.setParserPool(this.service['parserPool']);
@@ -51,16 +54,23 @@ class TreeSitterServer {
    */
   private initializeMiddleware(): void {
     // CORS配置
-    this.app.use(cors({
-      origin: ServerConfig.CORS.ORIGIN,
-      methods: ServerConfig.CORS.METHODS,
-      allowedHeaders: ServerConfig.CORS.ALLOWED_HEADERS,
-      credentials: ServerConfig.CORS.CREDENTIALS,
-    }));
+    this.app.use(
+      cors({
+        origin: ServerConfig.CORS.ORIGIN,
+        methods: ServerConfig.CORS.METHODS,
+        allowedHeaders: ServerConfig.CORS.ALLOWED_HEADERS,
+        credentials: ServerConfig.CORS.CREDENTIALS,
+      }),
+    );
 
     // 请求体解析
     this.app.use(bodyParser.json({ limit: ServerConfig.REQUEST.MAX_SIZE }));
-    this.app.use(bodyParser.urlencoded({ extended: true, limit: ServerConfig.REQUEST.MAX_SIZE }));
+    this.app.use(
+      bodyParser.urlencoded({
+        extended: true,
+        limit: ServerConfig.REQUEST.MAX_SIZE,
+      }),
+    );
 
     // 资源保护中间件
     this.app.use(resourceGuard(this.memoryMonitor, this.resourceCleaner));
@@ -115,15 +125,22 @@ class TreeSitterServer {
   /**
    * 请求日志中间件
    */
-  private requestLogger = (req: Request, res: Response, next: NextFunction): void => {
+  private requestLogger = (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): void => {
     const start = Date.now();
-    const requestId = req.headers['x-request-id'] as string || 'unknown';
+    const requestId = (req.headers['x-request-id'] as string) || 'unknown';
 
     res.on('finish', () => {
       const duration = Date.now() - start;
       const memory = process.memoryUsage();
 
-      log.info('RequestLogger', `${req.method} ${req.path} - ${res.statusCode} - ${duration}ms - Memory: ${Math.round(memory.heapUsed / 1024 / 1024)}MB - RequestID: ${requestId}`);
+      log.info(
+        'RequestLogger',
+        `${req.method} ${req.path} - ${res.statusCode} - ${duration}ms - Memory: ${Math.round(memory.heapUsed / 1024 / 1024)}MB - RequestID: ${requestId}`,
+      );
     });
 
     next();
@@ -132,8 +149,13 @@ class TreeSitterServer {
   /**
    * 请求ID中间件
    */
-  private requestIdMiddleware = (req: Request, res: Response, next: NextFunction): void => {
-    const requestId = req.headers['x-request-id'] as string || this.generateRequestId();
+  private requestIdMiddleware = (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): void => {
+    const requestId =
+      (req.headers['x-request-id'] as string) || this.generateRequestId();
     req.headers['x-request-id'] = requestId;
     res.setHeader('X-Request-ID', requestId);
     next();
@@ -187,7 +209,7 @@ class TreeSitterServer {
             log.info('Server', 'Cleanup completed, exiting');
             process.exit(0);
           })
-          .catch((error) => {
+          .catch(error => {
             log.error('Server', `Error during cleanup: ${error.message}`);
             process.exit(1);
           });
@@ -230,7 +252,10 @@ class TreeSitterServer {
 
       log.info('Server', 'All resources cleaned up');
     } catch (error) {
-      log.error('Server', `Error during cleanup: ${error instanceof Error ? error.message : String(error)}`);
+      log.error(
+        'Server',
+        `Error during cleanup: ${error instanceof Error ? error.message : String(error)}`,
+      );
       throw error;
     }
   }

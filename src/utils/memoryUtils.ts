@@ -27,12 +27,12 @@ export function formatMemorySize(bytes: number): string {
   const units = ['B', 'KB', 'MB', 'GB'];
   let size = bytes;
   let unitIndex = 0;
-  
+
   while (size >= 1024 && unitIndex < units.length - 1) {
     size /= 1024;
     unitIndex++;
   }
-  
+
   return `${size.toFixed(2)} ${units[unitIndex]}`;
 }
 
@@ -43,9 +43,9 @@ export function logMemoryUsage(prefix: string = ''): void {
   const usage = getMemoryUsage();
   console.log(
     `${prefix} Memory - RSS: ${formatMemorySize(usage.rss)}, ` +
-    `Heap Total: ${formatMemorySize(usage.heapTotal)}, ` +
-    `Heap Used: ${formatMemorySize(usage.heapUsed)}, ` +
-    `External: ${formatMemorySize(usage.external)}`
+      `Heap Total: ${formatMemorySize(usage.heapTotal)}, ` +
+      `Heap Used: ${formatMemorySize(usage.heapUsed)}, ` +
+      `External: ${formatMemorySize(usage.external)}`,
   );
 }
 
@@ -84,7 +84,10 @@ export function getMemoryStats() {
  * 内存使用监控器
  */
 export class MemoryMonitor {
-  private measurements: Array<{ timestamp: number; usage: NodeJS.MemoryUsage }> = [];
+  private measurements: Array<{
+    timestamp: number;
+    usage: NodeJS.MemoryUsage;
+  }> = [];
   private maxMeasurements: number = 10;
 
   /**
@@ -141,7 +144,7 @@ export class MemoryMonitor {
         external: acc.external + measurement.usage.external,
         arrayBuffers: acc.arrayBuffers + measurement.usage.arrayBuffers,
       }),
-      { rss: 0, heapTotal: 0, heapUsed: 0, external: 0, arrayBuffers: 0 }
+      { rss: 0, heapTotal: 0, heapUsed: 0, external: 0, arrayBuffers: 0 },
     );
 
     const count = this.measurements.length;
@@ -162,12 +165,21 @@ export class MemoryMonitor {
       return null;
     }
 
-    return this.measurements.reduce((max, measurement) => {
-      if (measurement.usage.heapUsed > max.heapUsed) {
-        return measurement.usage;
-      }
-      return max;
-    }, this.measurements[0]?.usage ?? { rss: 0, heapTotal: 0, heapUsed: 0, external: 0, arrayBuffers: 0 });
+    return this.measurements.reduce(
+      (max, measurement) => {
+        if (measurement.usage.heapUsed > max.heapUsed) {
+          return measurement.usage;
+        }
+        return max;
+      },
+      this.measurements[0]?.usage ?? {
+        rss: 0,
+        heapTotal: 0,
+        heapUsed: 0,
+        external: 0,
+        arrayBuffers: 0,
+      },
+    );
   }
 
   /**

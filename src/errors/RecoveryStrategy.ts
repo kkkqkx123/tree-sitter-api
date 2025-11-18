@@ -10,8 +10,8 @@ import { CleanupStrategy } from '@/config/memory';
 export class RecoveryStrategy {
   constructor(
     private resourceCleaner: ResourceCleaner,
-    private memoryMonitor: MemoryMonitor
-  ) { }
+    private memoryMonitor: MemoryMonitor,
+  ) {}
 
   /**
    * 尝试从错误中恢复
@@ -32,8 +32,8 @@ export class RecoveryStrategy {
           message: 'Error does not require resource recovery',
           details: {
             errorType: error.type,
-            severity: error.severity
-          }
+            severity: error.severity,
+          },
         };
     }
   }
@@ -45,7 +45,9 @@ export class RecoveryStrategy {
   private async recoverFromMemoryError(): Promise<RecoveryResult> {
     try {
       // 执行紧急清理
-      const cleanupResult = await this.resourceCleaner.performCleanup(CleanupStrategy.EMERGENCY);
+      const cleanupResult = await this.resourceCleaner.performCleanup(
+        CleanupStrategy.EMERGENCY,
+      );
 
       // 强制垃圾回收
       const gcSuccess = await this.resourceCleaner.forceGarbageCollection();
@@ -56,21 +58,22 @@ export class RecoveryStrategy {
       return {
         success: memoryStatus.level !== 'critical',
         action: 'emergency_cleanup',
-        message: memoryStatus.level === 'critical'
-          ? 'Memory still critical after cleanup'
-          : 'Memory recovered successfully',
+        message:
+          memoryStatus.level === 'critical'
+            ? 'Memory still critical after cleanup'
+            : 'Memory recovered successfully',
         details: {
           cleanupResult,
           gcSuccess,
-          memoryStatus
-        }
+          memoryStatus,
+        },
       };
     } catch (recoveryError: any) {
       return {
         success: false,
         action: 'emergency_cleanup',
         message: `Recovery failed: ${recoveryError.message}`,
-        details: { recoveryError: recoveryError.message }
+        details: { recoveryError: recoveryError.message },
       };
     }
   }
@@ -82,21 +85,58 @@ export class RecoveryStrategy {
   private async recoverFromResourceError(): Promise<RecoveryResult> {
     try {
       // 执行激进清理
-      const cleanupResult = await this.resourceCleaner.performCleanup(CleanupStrategy.AGGRESSIVE);
+      const cleanupResult = await this.resourceCleaner.performCleanup(
+        CleanupStrategy.AGGRESSIVE,
+      );
 
       return {
         success: true,
         action: 'resource_cleanup',
         message: 'Resource constraints resolved through cleanup',
-        details: { cleanupResult }
+        details: { cleanupResult },
       };
     } catch (recoveryError: any) {
       return {
         success: false,
         action: 'resource_cleanup',
         message: `Resource recovery failed: ${recoveryError.message}`,
-        details: { recoveryError: recoveryError.message }
+        details: { recoveryError: recoveryError.message },
       };
+    }
+  }
+
+  /**
+   * 检查是否可以从指定错误中恢复
+   * @param error TreeSitterError对象
+   * @returns 是否可以恢复
+   */
+  canRecover(error: TreeSitterError): boolean {
+    switch (error.type) {
+      case ErrorType.MEMORY_ERROR:
+      case ErrorType.RESOURCE_ERROR:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * 获取错误的恢复优先级
+   * @param error TreeSitterError对象
+   * @returns 恢复优先级（数字越大优先级越高）
+   */
+  getRecoveryPriority(error: TreeSitterError): number {
+    switch (error.type) {
+      case ErrorType.MEMORY_ERROR:
+        return 10; // 最高优先级
+      case ErrorType.RESOURCE_ERROR:
+        return 8; // 高优先级
+      case ErrorType.PARSE_ERROR:
+        return 5; // 中等优先级
+      case ErrorType.VALIDATION_ERROR:
+        return 3; // 低优先级
+      default:
+        return 1; // 最低优先级
     }
   }
 }

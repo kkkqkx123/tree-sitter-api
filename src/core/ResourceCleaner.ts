@@ -11,7 +11,8 @@ export class ResourceCleaner {
   private cleanupHistory: CleanupResult[] = [];
   private maxHistorySize = 50;
   private isCleaning = false;
-  private parserPool: { cleanup(): void; emergencyCleanup(): void } | null = null;
+  private parserPool: { cleanup(): void; emergencyCleanup(): void } | null =
+    null;
   private treeManager: { emergencyCleanup(): void } | null = null;
   private languageManager: { clearCache(): void } | null = null;
 
@@ -20,7 +21,10 @@ export class ResourceCleaner {
   /**
    * 设置解析器池
    */
-  setParserPool(parserPool: { cleanup(): void; emergencyCleanup(): void }): void {
+  setParserPool(parserPool: {
+    cleanup(): void;
+    emergencyCleanup(): void;
+  }): void {
     this.parserPool = parserPool;
   }
 
@@ -38,10 +42,12 @@ export class ResourceCleaner {
     this.languageManager = languageManager;
   }
 
- /**
+  /**
    * 执行清理
    */
-  async performCleanup(strategy: CleanupStrategy = CleanupStrategy.BASIC): Promise<CleanupResult> {
+  async performCleanup(
+    strategy: CleanupStrategy = CleanupStrategy.BASIC,
+  ): Promise<CleanupResult> {
     // 如果正在清理，直接返回
     if (this.isCleaning) {
       return {
@@ -59,7 +65,7 @@ export class ResourceCleaner {
       const beforeMemory = getMemoryUsage();
 
       log.info('ResourceCleaner', `Performing ${strategy} cleanup...`);
-      
+
       // 根据策略执行清理
       switch (strategy) {
         case CleanupStrategy.EMERGENCY:
@@ -99,7 +105,9 @@ export class ResourceCleaner {
       }
 
       const afterMemory = getMemoryUsage();
-      const freed = Math.round((beforeMemory.heapUsed - afterMemory.heapUsed) / 1024 / 1024);
+      const freed = Math.round(
+        (beforeMemory.heapUsed - afterMemory.heapUsed) / 1024 / 1024,
+      );
       const duration = Date.now() - startTime;
 
       const result: CleanupResult = {
@@ -112,7 +120,10 @@ export class ResourceCleaner {
       // 记录清理结果
       this.recordCleanupResult(result);
 
-      log.info('ResourceCleaner', `${strategy} cleanup completed: ${result.memoryFreed}MB freed in ${result.duration}ms`);
+      log.info(
+        'ResourceCleaner',
+        `${strategy} cleanup completed: ${result.memoryFreed}MB freed in ${result.duration}ms`,
+      );
 
       return result;
     } catch (error) {
@@ -132,7 +143,6 @@ export class ResourceCleaner {
       this.isCleaning = false;
     }
   }
-
 
   /**
    * 记录清理结果
@@ -162,16 +172,26 @@ export class ResourceCleaner {
     failedCleanups: number;
     totalMemoryFreed: number;
     averageCleanupTime: number;
-    strategyStats: Record<string, { count: number; successRate: number; avgMemoryFreed: number }>;
+    strategyStats: Record<
+      string,
+      { count: number; successRate: number; avgMemoryFreed: number }
+    >;
     recentCleanups: CleanupResult[];
   } {
     const totalCleanups = this.cleanupHistory.length;
-    const successfulCleanups = this.cleanupHistory.filter(r => r.success).length;
+    const successfulCleanups = this.cleanupHistory.filter(
+      r => r.success,
+    ).length;
     const failedCleanups = totalCleanups - successfulCleanups;
-    const totalMemoryFreed = this.cleanupHistory.reduce((sum, r) => sum + r.memoryFreed, 0);
-    const averageCleanupTime = totalCleanups > 0
-      ? this.cleanupHistory.reduce((sum, r) => sum + r.duration, 0) / totalCleanups
-      : 0;
+    const totalMemoryFreed = this.cleanupHistory.reduce(
+      (sum, r) => sum + r.memoryFreed,
+      0,
+    );
+    const averageCleanupTime =
+      totalCleanups > 0
+        ? this.cleanupHistory.reduce((sum, r) => sum + r.duration, 0) /
+          totalCleanups
+        : 0;
 
     // 按策略分组统计
     const strategyGroups: Record<string, CleanupResult[]> = {};
@@ -183,11 +203,15 @@ export class ResourceCleaner {
       strategyGroups[strategy].push(result);
     });
 
-    const strategyStats: Record<string, { count: number; successRate: number; avgMemoryFreed: number }> = {};
+    const strategyStats: Record<
+      string,
+      { count: number; successRate: number; avgMemoryFreed: number }
+    > = {};
     Object.entries(strategyGroups).forEach(([strategy, results]) => {
       const count = results.length;
       const successCount = results.filter(r => r.success).length;
-      const avgMemoryFreed = results.reduce((sum, r) => sum + r.memoryFreed, 0) / count;
+      const avgMemoryFreed =
+        results.reduce((sum, r) => sum + r.memoryFreed, 0) / count;
 
       strategyStats[strategy] = {
         count,
@@ -213,7 +237,11 @@ export class ResourceCleaner {
    * 获取可用的清理策略
    */
   getAvailableStrategies(): CleanupStrategy[] {
-    return [CleanupStrategy.BASIC, CleanupStrategy.AGGRESSIVE, CleanupStrategy.EMERGENCY];
+    return [
+      CleanupStrategy.BASIC,
+      CleanupStrategy.AGGRESSIVE,
+      CleanupStrategy.EMERGENCY,
+    ];
   }
 
   /**
@@ -223,10 +251,12 @@ export class ResourceCleaner {
     const stats = this.getCleanupStats();
 
     // 检查失败率
-    if (stats.totalCleanups > 10 && stats.failedCleanups / stats.totalCleanups > 0.3) {
+    if (
+      stats.totalCleanups > 10 &&
+      stats.failedCleanups / stats.totalCleanups > 0.3
+    ) {
       return false;
     }
-
 
     return true;
   }

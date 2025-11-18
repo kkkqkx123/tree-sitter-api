@@ -51,7 +51,9 @@ describe('LightweightParserPool', () => {
       parserPool.releaseParser(parser, 'javascript' as SupportedLanguage);
 
       // 检查池中是否有解析器
-      const poolSize = parserPool.getPoolSize('javascript' as SupportedLanguage);
+      const poolSize = parserPool.getPoolSize(
+        'javascript' as SupportedLanguage,
+      );
       expect(poolSize).toBe(1);
 
       // 从池中获取解析器
@@ -67,11 +69,15 @@ describe('LightweightParserPool', () => {
   describe('releaseParser', () => {
     it('should return parser to pool when pool is not full', () => {
       const parser = parserPool.getParser('javascript' as SupportedLanguage);
-      const initialPoolSize = parserPool.getPoolSize('javascript' as SupportedLanguage);
+      const initialPoolSize = parserPool.getPoolSize(
+        'javascript' as SupportedLanguage,
+      );
 
       parserPool.releaseParser(parser, 'javascript' as SupportedLanguage);
 
-      const finalPoolSize = parserPool.getPoolSize('javascript' as SupportedLanguage);
+      const finalPoolSize = parserPool.getPoolSize(
+        'javascript' as SupportedLanguage,
+      );
       expect(finalPoolSize).toBe(initialPoolSize + 1);
 
       const stats = parserPool.getPoolStats();
@@ -93,7 +99,9 @@ describe('LightweightParserPool', () => {
       });
 
       // 池大小不应超过最大限制
-      const poolSize = parserPool.getPoolSize('javascript' as SupportedLanguage);
+      const poolSize = parserPool.getPoolSize(
+        'javascript' as SupportedLanguage,
+      );
       expect(poolSize).toBe(maxPoolSize);
 
       const stats = parserPool.getPoolStats();
@@ -123,15 +131,21 @@ describe('LightweightParserPool', () => {
       parserPool.releaseParser(_parser2, 'python' as SupportedLanguage);
 
       // 验证池中有解析器
-      expect(parserPool.getPoolSize('javascript' as SupportedLanguage)).toBeGreaterThan(0);
-      expect(parserPool.getPoolSize('python' as SupportedLanguage)).toBeGreaterThan(0);
+      expect(
+        parserPool.getPoolSize('javascript' as SupportedLanguage),
+      ).toBeGreaterThan(0);
+      expect(
+        parserPool.getPoolSize('python' as SupportedLanguage),
+      ).toBeGreaterThan(0);
 
       // 清理JavaScript语言池
       parserPool.cleanupLanguagePool('javascript' as SupportedLanguage);
 
       // JavaScript池应被清理，但Python池应保持不变
       expect(parserPool.getPoolSize('javascript' as SupportedLanguage)).toBe(0);
-      expect(parserPool.getPoolSize('python' as SupportedLanguage)).toBeGreaterThan(0);
+      expect(
+        parserPool.getPoolSize('python' as SupportedLanguage),
+      ).toBeGreaterThan(0);
     });
   });
 
@@ -183,7 +197,8 @@ describe('LightweightParserPool', () => {
     it('should return false when active parsers exceed threshold', () => {
       // 获取多个解析器以测试健康状态
       const parsers = [];
-      for (let i = 0; i < 15; i++) { // 超过2倍池大小
+      for (let i = 0; i < 15; i++) {
+        // 超过2倍池大小
         parsers.push(parserPool.getParser('javascript' as SupportedLanguage));
       }
 
@@ -205,15 +220,15 @@ describe('LightweightParserPool', () => {
     it('should warm up specified language pools', async () => {
       const languages: SupportedLanguage[] = ['javascript', 'python'];
 
-      await expect(parserPool.warmupPool(languages))
-        .resolves
-        .not.toThrow();
+      await expect(parserPool.warmupPool(languages)).resolves.not.toThrow();
     });
   });
 
   describe('getPoolSize', () => {
     it('should return correct pool size for language', () => {
-      const initialSize = parserPool.getPoolSize('javascript' as SupportedLanguage);
+      const initialSize = parserPool.getPoolSize(
+        'javascript' as SupportedLanguage,
+      );
       expect(initialSize).toBe(0);
 
       const parser = parserPool.getParser('javascript' as SupportedLanguage);
@@ -229,11 +244,15 @@ describe('LightweightParserPool', () => {
       const parser = parserPool.getParser('javascript' as SupportedLanguage);
       parserPool.releaseParser(parser, 'javascript' as SupportedLanguage);
 
-      expect(parserPool.hasAvailableParser('javascript' as SupportedLanguage)).toBe(true);
+      expect(
+        parserPool.hasAvailableParser('javascript' as SupportedLanguage),
+      ).toBe(true);
     });
 
     it('should return true when active parsers are under threshold', () => {
-      expect(parserPool.hasAvailableParser('javascript' as SupportedLanguage)).toBe(true);
+      expect(
+        parserPool.hasAvailableParser('javascript' as SupportedLanguage),
+      ).toBe(true);
     });
   });
 
@@ -261,7 +280,9 @@ describe('LightweightParserPool', () => {
 
       // 验证初始状态
       const initialStats = parserPool.getPoolStats();
-      expect(initialStats.totalPooled + initialStats.totalActive).toBeGreaterThan(0);
+      expect(
+        initialStats.totalPooled + initialStats.totalActive,
+      ).toBeGreaterThan(0);
 
       // 销毁池
       parserPool.destroy();

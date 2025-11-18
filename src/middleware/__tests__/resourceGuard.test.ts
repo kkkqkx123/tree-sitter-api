@@ -3,7 +3,12 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { resourceGuard, memoryMonitor, rateLimiter, healthCheck } from '../resourceGuard';
+import {
+  resourceGuard,
+  memoryMonitor,
+  rateLimiter,
+  healthCheck,
+} from '../resourceGuard';
 import { MemoryMonitor } from '@/core/MemoryMonitor';
 import { ResourceCleaner } from '@/core/ResourceCleaner';
 import { CleanupStrategy } from '@/config/memory';
@@ -44,7 +49,7 @@ describe('resourceGuard 中间件', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // 创建模拟的请求和响应对象
     mockRequest = {
       headers: {
@@ -99,7 +104,11 @@ describe('resourceGuard 中间件', () => {
       }) as any;
 
       // 执行测试
-      await middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      await middleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).toHaveBeenCalled();
@@ -116,7 +125,11 @@ describe('resourceGuard 中间件', () => {
       };
 
       // 执行测试
-      await middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      await middleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockResponse.status).toHaveBeenCalledWith(413);
@@ -135,7 +148,11 @@ describe('resourceGuard 中间件', () => {
       };
 
       // 执行测试
-      await middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      await middleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockResponse.status).toHaveBeenCalledWith(413);
@@ -181,10 +198,16 @@ describe('resourceGuard 中间件', () => {
       }) as any;
 
       // 执行测试
-      await middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      await middleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
-      expect(mockResourceCleaner.performCleanup).toHaveBeenCalledWith(CleanupStrategy.EMERGENCY);
+      expect(mockResourceCleaner.performCleanup).toHaveBeenCalledWith(
+        CleanupStrategy.EMERGENCY,
+      );
       expect(mockNext).toHaveBeenCalled();
 
       // 恢复原始方法
@@ -215,10 +238,16 @@ describe('resourceGuard 中间件', () => {
       mockResourceCleaner.performCleanup.mockResolvedValue(mockCleanupResult);
 
       // 执行测试
-      await middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      await middleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
-      expect(mockResourceCleaner.performCleanup).toHaveBeenCalledWith(CleanupStrategy.EMERGENCY);
+      expect(mockResourceCleaner.performCleanup).toHaveBeenCalledWith(
+        CleanupStrategy.EMERGENCY,
+      );
       expect(mockResponse.status).toHaveBeenCalledWith(503);
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
@@ -231,9 +260,13 @@ describe('resourceGuard 中间件', () => {
 
     it('应该限制并发请求数', async () => {
       // 创建中间件实例，设置最大并发请求数为1
-      const limitedMiddleware = resourceGuard(mockMemoryMonitor, mockResourceCleaner, {
-        maxConcurrentRequests: 1,
-      });
+      const limitedMiddleware = resourceGuard(
+        mockMemoryMonitor,
+        mockResourceCleaner,
+        {
+          maxConcurrentRequests: 1,
+        },
+      );
 
       // 准备测试数据
       const mockMemoryStatus: MemoryStatus = {
@@ -267,18 +300,28 @@ describe('resourceGuard 中间件', () => {
       });
 
       // 执行第一个请求
-      await limitedMiddleware(mockRequest as Request, mockResponse as Response, mockNext);
+      await limitedMiddleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
       expect(mockNext).toHaveBeenCalled();
 
       // 重置mockNext
       mockNext.mockClear();
 
       // 执行第二个请求（应该被拒绝）
-      await limitedMiddleware(mockRequest as Request, mockResponse as Response, mockNext);
+      await limitedMiddleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
       expect(mockResponse.status).toHaveBeenCalledWith(503);
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
-        errors: ['Service temporarily unavailable: too many concurrent requests'],
+        errors: [
+          'Service temporarily unavailable: too many concurrent requests',
+        ],
         timestamp: expect.any(String),
       });
       expect(mockNext).not.toHaveBeenCalled();
@@ -317,10 +360,17 @@ describe('resourceGuard 中间件', () => {
       }) as any;
 
       // 执行测试
-      await middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      await middleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
-      expect(mockRequest.setTimeout).toHaveBeenCalledWith(30000, expect.any(Function));
+      expect(mockRequest.setTimeout).toHaveBeenCalledWith(
+        30000,
+        expect.any(Function),
+      );
 
       // 恢复原始方法
       process.memoryUsage = originalMemoryUsage;
@@ -383,7 +433,11 @@ describe('resourceGuard 中间件', () => {
       });
 
       // 执行测试
-      await middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      await middleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 模拟响应完成
       if (finishCallback) {
@@ -391,7 +445,9 @@ describe('resourceGuard 中间件', () => {
       }
 
       // 验证结果
-      expect(mockResourceCleaner.performCleanup).toHaveBeenCalledWith(CleanupStrategy.AGGRESSIVE);
+      expect(mockResourceCleaner.performCleanup).toHaveBeenCalledWith(
+        CleanupStrategy.AGGRESSIVE,
+      );
 
       // 恢复原始方法
       process.memoryUsage = originalMemoryUsage;
@@ -404,7 +460,11 @@ describe('resourceGuard 中间件', () => {
       });
 
       // 执行测试
-      await middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      await middleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
@@ -432,7 +492,11 @@ describe('resourceGuard 中间件', () => {
       mockMemoryMonitor.checkMemory.mockReturnValue(mockMemoryStatus);
 
       // 执行测试
-      memoryMiddleware(mockRequest as Request, mockResponse as Response, mockNext);
+      memoryMiddleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect((mockRequest as any).memoryStatus).toEqual(mockMemoryStatus);
@@ -453,10 +517,17 @@ describe('resourceGuard 中间件', () => {
       mockMemoryMonitor.checkMemory.mockReturnValue(mockMemoryStatus);
 
       // 执行测试
-      memoryMiddleware(mockRequest as Request, mockResponse as Response, mockNext);
+      memoryMiddleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('X-Memory-Status', 'critical');
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'X-Memory-Status',
+        'critical',
+      );
       expect(mockNext).toHaveBeenCalled();
     });
 
@@ -474,10 +545,17 @@ describe('resourceGuard 中间件', () => {
       mockMemoryMonitor.checkMemory.mockReturnValue(mockMemoryStatus);
 
       // 执行测试
-      memoryMiddleware(mockRequest as Request, mockResponse as Response, mockNext);
+      memoryMiddleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('X-Memory-Status', 'warning');
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'X-Memory-Status',
+        'warning',
+      );
       expect(mockNext).toHaveBeenCalled();
     });
   });
@@ -492,9 +570,18 @@ describe('resourceGuard 中间件', () => {
 
       // 验证结果
       expect(mockNext).toHaveBeenCalled();
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('X-RateLimit-Limit', 10);
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('X-RateLimit-Remaining', 9);
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('X-RateLimit-Reset', expect.any(Number));
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'X-RateLimit-Limit',
+        10,
+      );
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'X-RateLimit-Remaining',
+        9,
+      );
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'X-RateLimit-Reset',
+        expect.any(Number),
+      );
     });
 
     it('应该拒绝超过限制的请求', () => {

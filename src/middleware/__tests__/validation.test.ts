@@ -3,7 +3,13 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { validateParseRequest, validateRequest, requestSizeLimit, ConcurrencyLimiter, defaultConcurrencyLimiter } from '../validation';
+import {
+  validateParseRequest,
+  validateRequest,
+  requestSizeLimit,
+  ConcurrencyLimiter,
+  defaultConcurrencyLimiter,
+} from '../validation';
 import { ParseRequest } from '@/types/api';
 import { TreeSitterError, ErrorType, ErrorSeverity } from '@/types/errors';
 import { EnvConfig } from '@/config/env';
@@ -62,7 +68,11 @@ describe('validation middleware', () => {
       mockRequest.body = validBody;
 
       // 执行测试
-      validateParseRequest(mockRequest as Request, mockResponse as Response, mockNext);
+      validateParseRequest(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).toHaveBeenCalled();
@@ -75,7 +85,11 @@ describe('validation middleware', () => {
       mockRequest.body = null;
 
       // 执行测试
-      validateParseRequest(mockRequest as Request, mockResponse as Response, mockNext);
+      validateParseRequest(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).not.toHaveBeenCalled();
@@ -96,7 +110,11 @@ describe('validation middleware', () => {
       mockRequest.body = invalidBody;
 
       // 执行测试
-      validateParseRequest(mockRequest as Request, mockResponse as Response, mockNext);
+      validateParseRequest(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).not.toHaveBeenCalled();
@@ -118,7 +136,11 @@ describe('validation middleware', () => {
       mockRequest.body = invalidBody;
 
       // 执行测试
-      validateParseRequest(mockRequest as Request, mockResponse as Response, mockNext);
+      validateParseRequest(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).not.toHaveBeenCalled();
@@ -139,7 +161,11 @@ describe('validation middleware', () => {
       mockRequest.body = invalidBody;
 
       // 执行测试
-      validateParseRequest(mockRequest as Request, mockResponse as Response, mockNext);
+      validateParseRequest(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).not.toHaveBeenCalled();
@@ -161,7 +187,11 @@ describe('validation middleware', () => {
       mockRequest.body = invalidBody;
 
       // 执行测试
-      validateParseRequest(mockRequest as Request, mockResponse as Response, mockNext);
+      validateParseRequest(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).not.toHaveBeenCalled();
@@ -183,14 +213,20 @@ describe('validation middleware', () => {
       mockRequest.body = invalidBody;
 
       // 执行测试
-      validateParseRequest(mockRequest as Request, mockResponse as Response, mockNext);
+      validateParseRequest(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).not.toHaveBeenCalled();
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
-        errors: ['Invalid language format. Only alphanumeric characters, hyphens and underscores are allowed'],
+        errors: [
+          'Invalid language format. Only alphanumeric characters, hyphens and underscores are allowed',
+        ],
         timestamp: expect.any(String),
       });
     });
@@ -206,7 +242,11 @@ describe('validation middleware', () => {
       mockRequest.body = invalidBody;
 
       // 执行测试
-      validateParseRequest(mockRequest as Request, mockResponse as Response, mockNext);
+      validateParseRequest(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).not.toHaveBeenCalled();
@@ -229,7 +269,11 @@ describe('validation middleware', () => {
       mockRequest.body = invalidBody;
 
       // 执行测试
-      validateParseRequest(mockRequest as Request, mockResponse as Response, mockNext);
+      validateParseRequest(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).not.toHaveBeenCalled();
@@ -252,7 +296,11 @@ describe('validation middleware', () => {
       mockRequest.body = invalidBody;
 
       // 执行测试
-      validateParseRequest(mockRequest as Request, mockResponse as Response, mockNext);
+      validateParseRequest(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).not.toHaveBeenCalled();
@@ -275,7 +323,11 @@ describe('validation middleware', () => {
       mockRequest.body = invalidBody;
 
       // 执行测试
-      validateParseRequest(mockRequest as Request, mockResponse as Response, mockNext);
+      validateParseRequest(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).not.toHaveBeenCalled();
@@ -299,7 +351,11 @@ describe('validation middleware', () => {
       mockRequest.body = invalidBody;
 
       // 执行测试
-      validateParseRequest(mockRequest as Request, mockResponse as Response, mockNext);
+      validateParseRequest(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).not.toHaveBeenCalled();
@@ -322,7 +378,11 @@ describe('validation middleware', () => {
       mockRequest.body = invalidBody;
 
       // 执行测试
-      validateParseRequest(mockRequest as Request, mockResponse as Response, mockNext);
+      validateParseRequest(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).not.toHaveBeenCalled();
@@ -345,7 +405,11 @@ describe('validation middleware', () => {
       mockRequest.body = invalidBody;
 
       // 执行测试
-      validateParseRequest(mockRequest as Request, mockResponse as Response, mockNext);
+      validateParseRequest(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).not.toHaveBeenCalled();
@@ -368,14 +432,20 @@ describe('validation middleware', () => {
       mockRequest.body = invalidBody;
 
       // 执行测试
-      validateParseRequest(mockRequest as Request, mockResponse as Response, mockNext);
+      validateParseRequest(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).not.toHaveBeenCalled();
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
-        errors: ['Query must contain at least one capture pattern with @ symbol: query'],
+        errors: [
+          'Query must contain at least one capture pattern with @ symbol: query',
+        ],
         timestamp: expect.any(String),
       });
     });
@@ -391,7 +461,11 @@ describe('validation middleware', () => {
       mockRequest.body = validBody;
 
       // 执行测试
-      validateParseRequest(mockRequest as Request, mockResponse as Response, mockNext);
+      validateParseRequest(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).toHaveBeenCalled();
@@ -411,7 +485,11 @@ describe('validation middleware', () => {
       mockRequest.body = validBody;
 
       // 执行测试
-      validateParseRequest(mockRequest as Request, mockResponse as Response, mockNext);
+      validateParseRequest(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).toHaveBeenCalled();
@@ -429,7 +507,11 @@ describe('validation middleware', () => {
       (EnvConfig as any).MAX_CODE_LENGTH = null; // 这会导致一个TypeError
 
       // 执行测试
-      validateParseRequest(mockRequest as Request, mockResponse as Response, mockNext);
+      validateParseRequest(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+      );
 
       // 恢复原始值
       (EnvConfig as any).MAX_CODE_LENGTH = originalEnvConfig;
@@ -467,7 +549,7 @@ describe('validation middleware', () => {
       const error = new TreeSitterError(
         ErrorType.VALIDATION_ERROR,
         ErrorSeverity.MEDIUM,
-        'Test validation error'
+        'Test validation error',
       );
       const validationFn = jest.fn().mockImplementation(() => {
         throw error;
@@ -560,7 +642,9 @@ describe('validation middleware', () => {
       expect(mockResponse.status).toHaveBeenCalledWith(413);
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
-        errors: [`Request size 6000000 exceeds maximum allowed size of 5242880 bytes`],
+        errors: [
+          `Request size 6000000 exceeds maximum allowed size of 5242880 bytes`,
+        ],
         timestamp: expect.any(String),
       });
     });
@@ -581,7 +665,9 @@ describe('validation middleware', () => {
       expect(mockResponse.status).toHaveBeenCalledWith(413);
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
-        errors: [`Request size 2000 exceeds maximum allowed size of 1000 bytes`],
+        errors: [
+          `Request size 2000 exceeds maximum allowed size of 1000 bytes`,
+        ],
         timestamp: expect.any(String),
       });
     });
@@ -640,24 +726,33 @@ describe('validation middleware', () => {
     it('应该拒绝超过并发限制的请求', () => {
       // 准备测试数据
       const middleware = limiter.middleware();
-      
+
       // 创建新的请求和响应对象，避免模拟函数的干扰
-      const mockRequest1 = { ...mockRequest, headers: { 'x-request-id': 'req-1' } };
-      const mockRequest2 = { ...mockRequest, headers: { 'x-request-id': 'req-2' } };
-      const mockRequest3 = { ...mockRequest, headers: { 'x-request-id': 'req-3' } };
-      
+      const mockRequest1 = {
+        ...mockRequest,
+        headers: { 'x-request-id': 'req-1' },
+      };
+      const mockRequest2 = {
+        ...mockRequest,
+        headers: { 'x-request-id': 'req-2' },
+      };
+      const mockRequest3 = {
+        ...mockRequest,
+        headers: { 'x-request-id': 'req-3' },
+      };
+
       const mockResponse1 = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn().mockReturnThis(),
         on: jest.fn(),
       };
-      
+
       const mockResponse2 = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn().mockReturnThis(),
         on: jest.fn(),
       };
-      
+
       const mockResponse3 = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn().mockReturnThis(),
@@ -665,21 +760,35 @@ describe('validation middleware', () => {
       };
 
       // 添加两个请求以达到限制
-      middleware(mockRequest1 as Request, mockResponse1 as unknown as Response, jest.fn());
-      middleware(mockRequest2 as Request, mockResponse2 as unknown as Response, jest.fn());
+      middleware(
+        mockRequest1 as Request,
+        mockResponse1 as unknown as Response,
+        jest.fn(),
+      );
+      middleware(
+        mockRequest2 as Request,
+        mockResponse2 as unknown as Response,
+        jest.fn(),
+      );
 
       // 重置模拟函数
       const mockNext3 = jest.fn();
 
       // 第三个请求应该被拒绝
-      middleware(mockRequest3 as Request, mockResponse3 as unknown as Response, mockNext3);
+      middleware(
+        mockRequest3 as Request,
+        mockResponse3 as unknown as Response,
+        mockNext3,
+      );
 
       // 验证结果
       expect(mockNext3).not.toHaveBeenCalled();
       expect(mockResponse3.status).toHaveBeenCalledWith(429);
       expect(mockResponse3.json).toHaveBeenCalledWith({
         success: false,
-        errors: ['Server is busy. Maximum concurrent requests (2) exceeded. Please try again later.'],
+        errors: [
+          'Server is busy. Maximum concurrent requests (2) exceeded. Please try again later.',
+        ],
         timestamp: expect.any(String),
       });
       expect(limiter.getActiveCount()).toBe(2);
@@ -699,7 +808,11 @@ describe('validation middleware', () => {
       };
 
       // 执行测试
-      middleware(mockRequest as Request, mockResponseWithFinish as Response, mockNext);
+      middleware(
+        mockRequest as Request,
+        mockResponseWithFinish as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).toHaveBeenCalled();
@@ -720,7 +833,11 @@ describe('validation middleware', () => {
       };
 
       // 执行测试
-      middleware(mockRequest as Request, mockResponseWithClose as Response, mockNext);
+      middleware(
+        mockRequest as Request,
+        mockResponseWithClose as Response,
+        mockNext,
+      );
 
       // 验证结果
       expect(mockNext).toHaveBeenCalled();
@@ -748,17 +865,23 @@ describe('validation middleware', () => {
     it('应该正确跟踪活动请求数', () => {
       // 准备测试数据
       const middleware = limiter.middleware();
-      
+
       // 创建新的请求和响应对象，避免模拟函数的干扰
-      const mockRequest1 = { ...mockRequest, headers: { 'x-request-id': 'req-1' } };
-      const mockRequest2 = { ...mockRequest, headers: { 'x-request-id': 'req-2' } };
-      
+      const mockRequest1 = {
+        ...mockRequest,
+        headers: { 'x-request-id': 'req-1' },
+      };
+      const mockRequest2 = {
+        ...mockRequest,
+        headers: { 'x-request-id': 'req-2' },
+      };
+
       const mockResponse1 = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn().mockReturnThis(),
         on: jest.fn(),
       };
-      
+
       const mockResponse2 = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn().mockReturnThis(),
@@ -768,10 +891,18 @@ describe('validation middleware', () => {
       // 执行测试
       expect(limiter.getActiveCount()).toBe(0);
 
-      middleware(mockRequest1 as Request, mockResponse1 as unknown as Response, jest.fn());
+      middleware(
+        mockRequest1 as Request,
+        mockResponse1 as unknown as Response,
+        jest.fn(),
+      );
       expect(limiter.getActiveCount()).toBe(1);
 
-      middleware(mockRequest2 as Request, mockResponse2 as unknown as Response, jest.fn());
+      middleware(
+        mockRequest2 as Request,
+        mockResponse2 as unknown as Response,
+        jest.fn(),
+      );
       expect(limiter.getActiveCount()).toBe(2);
     });
   });

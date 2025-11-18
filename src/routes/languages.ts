@@ -11,7 +11,9 @@ import { log } from '@/utils/Logger';
 /**
  * 创建语言列表路由
  */
-export default function createLanguagesRoutes(service: TreeSitterService): Router {
+export default function createLanguagesRoutes(
+  service: TreeSitterService,
+): Router {
   const router = Router();
   const controller = createLanguagesController(service);
 
@@ -62,13 +64,16 @@ export default function createLanguagesRoutes(service: TreeSitterService): Route
     }),
     async (req: Request, res: Response) => {
       await controller.preloadLanguage(req, res);
-    }
+    },
   );
 
   // 路由级别的中间件 - 记录路由访问
   router.use((req: Request, _res: Response, next: any) => {
-    const requestId = req.headers['x-request-id'] as string || 'unknown';
-    log.debug('LanguagesRoutes', `Languages route accessed - RequestID: ${requestId}, Path: ${req.path}, Method: ${req.method}`);
+    const requestId = (req.headers['x-request-id'] as string) || 'unknown';
+    log.debug(
+      'LanguagesRoutes',
+      `Languages route accessed - RequestID: ${requestId}, Path: ${req.path}, Method: ${req.method}`,
+    );
     next();
   });
 

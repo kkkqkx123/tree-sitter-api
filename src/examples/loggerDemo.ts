@@ -44,8 +44,11 @@ class ExampleService {
       // 模拟处理过程
       log.debug(this.moduleName, '执行业务逻辑', { requestId });
       await this.simulateWork(requestId);
-      
-      log.info(this.moduleName, '请求处理成功', { requestId, duration: '100ms' });
+
+      log.info(this.moduleName, '请求处理成功', {
+        requestId,
+        duration: '100ms',
+      });
     } catch (error) {
       log.error(this.moduleName, '请求处理失败', error as Error, { requestId });
       throw error;
@@ -54,15 +57,15 @@ class ExampleService {
 
   private async simulateWork(requestId: string): Promise<void> {
     log.debug(this.moduleName, '开始执行工作', { requestId });
-    
+
     // 模拟一些工作
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     // 模拟随机错误
     if (Math.random() < 0.3) {
       throw new Error('模拟工作失败');
     }
-    
+
     log.debug(this.moduleName, '工作执行完成', { requestId });
   }
 
@@ -71,7 +74,7 @@ class ExampleService {
     const memoryMB = {
       rss: Math.round(memory.rss / 1024 / 1024),
       heapUsed: Math.round(memory.heapUsed / 1024 / 1024),
-      heapTotal: Math.round(memory.heapTotal / 1024 / 1024)
+      heapTotal: Math.round(memory.heapTotal / 1024 / 1024),
     };
 
     log.info(this.moduleName, '内存使用情况', memoryMB);
@@ -94,7 +97,7 @@ async function runDemo(): Promise<void> {
 
   // 处理几个请求
   const requests = ['req-001', 'req-002', 'req-003', 'req-004', 'req-005'];
-  
+
   for (const requestId of requests) {
     try {
       await service.processRequest(requestId);
@@ -105,14 +108,14 @@ async function runDemo(): Promise<void> {
 
   // 最终检查
   service.checkMemoryUsage();
-  
+
   log.info('Demo', 'Logger演示完成');
   console.log('\n=== Logger 演示结束 ===');
 }
 
 // 运行演示
 if (require.main === module) {
-  runDemo().catch((error) => {
+  runDemo().catch(error => {
     console.error('演示运行失败:', error);
     process.exit(1);
   });

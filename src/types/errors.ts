@@ -34,7 +34,7 @@ export class TreeSitterError extends Error {
     type: ErrorType,
     severity: ErrorSeverity,
     message: string,
-    details?: ErrorDetails
+    details?: ErrorDetails,
   ) {
     super(message);
     this.name = 'TreeSitterError';
