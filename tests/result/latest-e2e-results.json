@@ -1,0 +1,319 @@
+{
+  "testSuite": "Tree-sitter API E2E Tests",
+  "timestamp": "2025-11-18T13:26:16.741Z",
+  "totalTests": 7,
+  "results": [
+    {
+      "testName": "JavaScript代码解析测试",
+      "requestData": {
+        "language": "javascript",
+        "code": "function hello() { console.log('Hello, World!'); }\nclass MyClass {\n  constructor() {\n    this.value = 42;\n  }\n\n  getValue() {\n    return this.value;\n  }\n}",
+        "query": "(function_declaration) @func",
+        "queries": [
+          "(class_declaration) @class",
+          "(call_expression) @call"
+        ]
+      },
+      "responseData": {
+        "success": true,
+        "data": [
+          {
+            "captureName": "func",
+            "type": "function_declaration",
+            "text": "function hello() { console.log('Hello, World!'); }",
+            "startPosition": {
+              "row": 0,
+              "column": 0
+            },
+            "endPosition": {
+              "row": 0,
+              "column": 50
+            }
+          },
+          {
+            "captureName": "class",
+            "type": "class_declaration",
+            "text": "class MyClass {\n  constructor() {\n    this.value = 42;\n  }\n\n  getValue() {\n    return this.value;\n  }\n}",
+            "startPosition": {
+              "row": 1,
+              "column": 0
+            },
+            "endPosition": {
+              "row": 9,
+              "column": 1
+            }
+          },
+          {
+            "captureName": "call",
+            "type": "call_expression",
+            "text": "console.log('Hello, World!')",
+            "startPosition": {
+              "row": 0,
+              "column": 19
+            },
+            "endPosition": {
+              "row": 0,
+              "column": 47
+            }
+          }
+        ],
+        "errors": [],
+        "timestamp": "2025-11-18T13:26:14.478Z"
+      },
+      "statusCode": 200,
+      "duration": 108,
+      "timestamp": "2025-11-18T13:26:14.489Z"
+    },
+    {
+      "testName": "Python代码解析测试",
+      "requestData": {
+        "language": "python",
+        "code": "def hello():\n    print('Hello, World!')\n\nclass MyClass:\n    def __init__(self):\n        self.value = 42\n\n    def get_value(self):\n        return self.value",
+        "query": "(function_definition) @func",
+        "queries": [
+          "(class_definition) @class",
+          "(call) @call"
+        ]
+      },
+      "responseData": {
+        "success": true,
+        "data": [
+          {
+            "captureName": "func",
+            "type": "function_definition",
+            "text": "def hello():\n    print('Hello, World!')",
+            "startPosition": {
+              "row": 0,
+              "column": 0
+            },
+            "endPosition": {
+              "row": 1,
+              "column": 26
+            }
+          },
+          {
+            "captureName": "func",
+            "type": "function_definition",
+            "text": "def __init__(self):\n        self.value = 42",
+            "startPosition": {
+              "row": 4,
+              "column": 4
+            },
+            "endPosition": {
+              "row": 5,
+              "column": 23
+            }
+          },
+          {
+            "captureName": "func",
+            "type": "function_definition",
+            "text": "def get_value(self):\n        return self.value",
+            "startPosition": {
+              "row": 7,
+              "column": 4
+            },
+            "endPosition": {
+              "row": 8,
+              "column": 25
+            }
+          },
+          {
+            "captureName": "class",
+            "type": "class_definition",
+            "text": "class MyClass:\n    def __init__(self):\n        self.value = 42\n\n    def get_value(self):\n        return self.value",
+            "startPosition": {
+              "row": 3,
+              "column": 0
+            },
+            "endPosition": {
+              "row": 8,
+              "column": 25
+            }
+          },
+          {
+            "captureName": "call",
+            "type": "call",
+            "text": "print('Hello, World!')",
+            "startPosition": {
+              "row": 1,
+              "column": 4
+            },
+            "endPosition": {
+              "row": 1,
+              "column": 26
+            }
+          }
+        ],
+        "errors": [],
+        "timestamp": "2025-11-18T13:26:14.535Z"
+      },
+      "statusCode": 200,
+      "duration": 46,
+      "timestamp": "2025-11-18T13:26:14.540Z"
+    },
+    {
+      "testName": "Java代码解析测试",
+      "requestData": {
+        "language": "java",
+        "code": "public class HelloWorld {\n    public static void main(String[] args) {\n        System.out.println(\"Hello, World!\");\n    }\n\n    public int getValue() {\n        return 42;\n    }\n}",
+        "query": "(method_declaration) @method",
+        "queries": [
+          "(class_declaration) @class",
+          "(method_invocation) @call"
+        ]
+      },
+      "responseData": {
+        "success": true,
+        "data": [
+          {
+            "captureName": "method",
+            "type": "method_declaration",
+            "text": "public static void main(String[] args) {\n        System.out.println(\"Hello, World!\");\n    }",
+            "startPosition": {
+              "row": 1,
+              "column": 4
+            },
+            "endPosition": {
+              "row": 3,
+              "column": 5
+            }
+          },
+          {
+            "captureName": "method",
+            "type": "method_declaration",
+            "text": "public int getValue() {\n        return 42;\n    }",
+            "startPosition": {
+              "row": 5,
+              "column": 4
+            },
+            "endPosition": {
+              "row": 7,
+              "column": 5
+            }
+          },
+          {
+            "captureName": "class",
+            "type": "class_declaration",
+            "text": "public class HelloWorld {\n    public static void main(String[] args) {\n        System.out.println(\"Hello, World!\");\n    }\n\n    public int getValue() {\n        return 42;\n    }\n}",
+            "startPosition": {
+              "row": 0,
+              "column": 0
+            },
+            "endPosition": {
+              "row": 8,
+              "column": 1
+            }
+          },
+          {
+            "captureName": "call",
+            "type": "method_invocation",
+            "text": "System.out.println(\"Hello, World!\")",
+            "startPosition": {
+              "row": 2,
+              "column": 8
+            },
+            "endPosition": {
+              "row": 2,
+              "column": 43
+            }
+          }
+        ],
+        "errors": [],
+        "timestamp": "2025-11-18T13:26:14.583Z"
+      },
+      "statusCode": 200,
+      "duration": 45,
+      "timestamp": "2025-11-18T13:26:14.587Z"
+    },
+    {
+      "testName": "不支持语言错误处理测试",
+      "requestData": {
+        "language": "invalid_language",
+        "code": "function hello() { console.log('Hello, World!'); }",
+        "query": "(function_declaration) @func"
+      },
+      "responseData": {
+        "success": false,
+        "data": [],
+        "errors": [
+          "Unsupported language: invalid_language"
+        ],
+        "timestamp": "2025-11-18T13:26:14.594Z"
+      },
+      "statusCode": 422,
+      "duration": 108,
+      "timestamp": "2025-11-18T13:26:14.696Z"
+    },
+    {
+      "testName": "健康检查端点测试",
+      "requestData": {},
+      "responseData": {
+        "success": true,
+        "data": {
+          "status": "warning",
+          "memory": {
+            "rss": 343,
+            "heapTotal": 292,
+            "heapUsed": 258,
+            "external": 6
+          },
+          "supportedLanguages": [
+            "javascript",
+            "typescript",
+            "python",
+            "java",
+            "go",
+            "rust",
+            "cpp",
+            "c",
+            "csharp",
+            "ruby"
+          ],
+          "timestamp": "2025-11-18T13:26:14.706Z"
+        },
+        "timestamp": "2025-11-18T13:26:14.706Z"
+      },
+      "statusCode": 200,
+      "duration": 13,
+      "timestamp": "2025-11-18T13:26:14.710Z"
+    },
+    {
+      "testName": "语言列表端点测试",
+      "requestData": {},
+      "responseData": {
+        "success": true,
+        "data": {
+          "languages": [
+            "javascript",
+            "typescript",
+            "python",
+            "java",
+            "go",
+            "rust",
+            "cpp",
+            "c",
+            "csharp",
+            "ruby"
+          ]
+        },
+        "timestamp": "2025-11-18T13:26:14.715Z"
+      },
+      "statusCode": 200,
+      "duration": 6,
+      "timestamp": "2025-11-18T13:26:14.718Z"
+    },
+    {
+      "testName": "根路径端点测试",
+      "requestData": {},
+      "responseData": {
+        "name": "Tree-sitter API",
+        "version": "v1",
+        "status": "running",
+        "timestamp": "2025-11-18T13:26:14.724Z"
+      },
+      "statusCode": 200,
+      "duration": 8,
+      "timestamp": "2025-11-18T13:26:14.728Z"
+    }
+  ]
+}

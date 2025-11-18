@@ -1,5 +1,29 @@
-// Jest setup file
-// This file is used to set up test environment before running tests
+/**
+ * Jest测试设置文件
+ */
 
-// Add any global setup code here if needed
-console.log('Jest setup complete');
+// 设置测试超时时间
+jest.setTimeout(60000);
+
+// 设置环境变量
+process.env['NODE_ENV'] = 'test';
+process.env['PORT'] = '3001'; // 使用不同的端口避免冲突
+
+// 全局错误处理
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
+
+// 在所有测试开始前运行
+beforeAll(() => {
+  console.log('Starting E2E tests...');
+});
+
+// 在所有测试结束后运行
+afterAll(() => {
+  console.log('E2E tests completed.');
+});

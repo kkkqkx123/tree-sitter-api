@@ -1,0 +1,9 @@
+{
+  "language": "python",
+  "code": "def hello():\n    print('Hello, World!')\n\nclass MyClass:\n    def __init__(self):\n        self.value = 42\n\n    def get_value(self):\n        return self.value",
+  "query": "(function_definition) @func",
+  "queries": [
+    "(class_definition) @class",
+    "(call) @call"
+  ]
+}

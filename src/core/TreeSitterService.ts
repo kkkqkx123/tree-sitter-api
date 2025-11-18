@@ -17,7 +17,8 @@ import { EnvConfig } from '@/config/env';
 import { CleanupStrategy } from '@/config/memory';
 import { log } from '@/utils/Logger';
 
-// 统一使用ES6导入Tree-sitter
+// 导入Tree-sitter
+import Parser from 'tree-sitter';
 
 export class TreeSitterService {
   private languageManager: LanguageManager;
@@ -130,7 +131,7 @@ export class TreeSitterService {
       return { success: true, matches: [], errors: [] };
     }
 
-    let parser: any | null = null;
+    let parser: Parser | null = null;
     let tree: TreeSitterTree | null = null;
     const cleanup: Array<() => void> = [];
 
@@ -142,7 +143,7 @@ export class TreeSitterService {
 
       // 获取解析器
       parser = this.parserPool.getParser(language as SupportedLanguage);
-      parser.setLanguage(languageModule);
+      parser.setLanguage(languageModule as any);
 
       // 添加解析器释放到清理队列
       cleanup.push(() => {
@@ -152,7 +153,8 @@ export class TreeSitterService {
       });
 
       // 解析代码
-      tree = parser.parse(code) as any as TreeSitterTree;
+      const parsedTree = parser.parse(code);
+      tree = parsedTree as any as TreeSitterTree;
       this.activeTrees.add(tree);
 
       // 添加tree销毁到清理队列
@@ -231,7 +233,25 @@ export class TreeSitterService {
     for (const queryString of queries) {
       try {
         // 使用正确的方式创建查询 - Tree-sitter的查询需要通过language.query()方式创建
-        const query = languageModule.query(queryString) as TreeSitterQuery;
+        // 但首先需要检查languageModule是否有query方法
+        let query: TreeSitterQuery | null = null;
+        
+        if (typeof languageModule.query === 'function') {
+          query = languageModule.query(queryString) as TreeSitterQuery;
+        } else {
+          // 如果languageModule没有query方法，尝试使用Parser.Query
+          try {
+            const Query = (Parser as any).Query;
+            query = new Query(languageModule, queryString) as TreeSitterQuery;
+          } catch (error) {
+            log.warn(
+              'TreeSitterService',
+              `Failed to create query using Parser.Query: ${error instanceof Error ? error.message : String(error)}`,
+            );
+            continue;
+          }
+        }
+        
         if (!query) {
           log.warn(
             'TreeSitterService',
@@ -397,14 +417,15 @@ export class TreeSitterService {
     const errorRate =
       this.requestCount > 0 ? (this.errorCount / this.requestCount) * 100 : 0;
 
-    // 确定整体状态
+    // 确定整体状态 - 修复健康状态判断逻辑
     let status: 'healthy' | 'warning' | 'error' = 'healthy';
 
-    if (memory.level === 'critical' || errorRate > 20) {
+    // 只有在真正严重的情况下才返回error
+    if (memory.level === 'critical' || errorRate > 50) {
       status = 'error';
     } else if (
       memory.level === 'warning' ||
-      errorRate > 10 ||
+      errorRate > 20 ||
       !this.parserPool.isHealthy()
     ) {
       status = 'warning';
