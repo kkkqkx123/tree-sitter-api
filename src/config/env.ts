@@ -2,11 +2,6 @@
  * 环境变量配置和验证
  */
 
-import * as dotenv from 'dotenv';
-
-// 加载环境变量
-dotenv.config();
-
 // 环境变量接口定义
 export interface EnvironmentConfig {
   // 服务器配置
