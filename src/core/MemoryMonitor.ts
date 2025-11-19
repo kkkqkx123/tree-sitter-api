@@ -1,11 +1,13 @@
 /**
- * 内存监控器 - 简化的内存监控功能
+ * 内存监控器 - 统一内存服务
+ * 提供中央化的内存管理功能，减少重复逻辑
  */
 
 import {
   MemoryConfig,
   MemoryTrend,
   refreshMemoryConfig,
+  CleanupStrategy
 } from '../config/memory';
 import { MemoryStatus } from '../types/errors';
 import { forceGarbageCollection, getMemoryUsage } from '../utils/memoryUtils';
@@ -17,6 +19,7 @@ export class MemoryMonitor {
   private monitoringInterval: NodeJS.Timeout | null = null;
   private isMonitoring = false;
   private configRefreshInterval: NodeJS.Timeout | null = null;
+  private activeCleanups: number = 0; // 防止并发清理
 
   constructor() {
     // 设置配置刷新间隔，以便在运行时更新配置
@@ -49,7 +52,6 @@ export class MemoryMonitor {
 
     this.isMonitoring = true;
     this.monitoringInterval = setInterval(() => {
-      // 简化：只记录日志，不记录历史数据
       if (MemoryConfig.MONITORING.ENABLED) {
         const status = this.checkMemory();
         if (status.level === 'warning' || status.level === 'critical') {
@@ -99,7 +101,7 @@ export class MemoryMonitor {
       heapTotal: Math.round(usage.heapTotal / 1024 / 1024),
       rss: Math.round(usage.rss / 1024 / 1024),
       external: Math.round(usage.external / 1024 / 1024),
-      trend: MemoryTrend.STABLE, // 简化：默认稳定
+      trend: MemoryTrend.STABLE,
     };
   }
 
@@ -146,9 +148,9 @@ export class MemoryMonitor {
 
     return {
       current,
-      peak: current, // 简化：返回当前值作为峰值
-      trend: MemoryTrend.STABLE, // 简化：默认稳定
-      historyLength: 0, // 简化：无历史记录
+      peak: current,
+      trend: MemoryTrend.STABLE,
+      historyLength: 0,
     };
   }
 
@@ -180,36 +182,89 @@ export class MemoryMonitor {
   }
 
   /**
-   * 执行内存清理
+   * 统一的清理方法，支持多种策略
+   * 为保持向后兼容性，返回原有格式
    */
-  async performCleanup(): Promise<{
-    beforeMemory: number;
-    afterMemory: number;
-    freedMemory: number;
-    gcPerformed: boolean;
-  }> {
-    const beforeMemory = Math.round(getMemoryUsage().heapUsed / 1024 / 1024);
-
-    // 尝试强制垃圾回收
-    let gcPerformed = false;
-    if (this.shouldForceGC()) {
-      gcPerformed = forceGarbageCollection();
-      this.markForceGC();
+  async performCleanup(strategy: CleanupStrategy = CleanupStrategy.BASIC): Promise<any> {
+    // 防止并发清理
+    if (this.activeCleanups > 0) {
+      return {
+        beforeMemory: 0,
+        afterMemory: 0,
+        freedMemory: 0,
+        gcPerformed: false,
+      };
     }
 
-    // 等待一小段时间让GC完成
-    await new Promise(resolve => setTimeout(resolve, 100));
+    this.activeCleanups++;
+    const beforeMemoryValue = Math.round(getMemoryUsage().heapUsed / 1024 / 1024);
 
-    const afterMemory = Math.round(getMemoryUsage().heapUsed / 1024 / 1024);
-    const freedMemory = beforeMemory - afterMemory;
+    try {
+      log.info('MemoryMonitor', `Performing ${strategy} cleanup...`);
 
-    this.markCleanup();
+      // 根据策略执行清理
+      switch (strategy) {
+        case CleanupStrategy.EMERGENCY:
+          // 紧急清理：强制垃圾回收多次
+          for (let i = 0; i < 3; i++) {
+            forceGarbageCollection();
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+          break;
+        case CleanupStrategy.AGGRESSIVE:
+          // 激进清理：强制垃圾回收两次
+          for (let i = 0; i < 2; i++) {
+            forceGarbageCollection();
+            await new Promise(resolve => setTimeout(resolve, 50));
+          }
+          break;
+        case CleanupStrategy.BASIC:
+        default:
+          // 基础清理：仅强制垃圾回收
+          forceGarbageCollection();
+          await new Promise(resolve => setTimeout(resolve, 50));
+          break;
+      }
 
+      const afterMemoryValue = Math.round(getMemoryUsage().heapUsed / 1024 / 1024);
+      const freedMemory = beforeMemoryValue - afterMemoryValue;
+
+      // 更新最后清理时间
+      this.markCleanup();
+
+      log.info(
+        'MemoryMonitor',
+        `${strategy} cleanup completed: ${freedMemory}MB freed`,
+      );
+
+      return {
+        beforeMemory: beforeMemoryValue,
+        afterMemory: afterMemoryValue,
+        freedMemory: Math.max(0, freedMemory),
+        gcPerformed: true,
+      };
+    } catch (error) {
+      log.error('MemoryMonitor', `${strategy} cleanup failed:`, error);
+
+      return {
+        beforeMemory: beforeMemoryValue,
+        afterMemory: beforeMemoryValue,
+        freedMemory: 0,
+        gcPerformed: false,
+      };
+    } finally {
+      this.activeCleanups--;
+    }
+  }
+
+  /**
+   * 检查内存阈值
+   */
+  checkThresholds(): { warning: boolean; critical: boolean } {
+    const currentStatus = this.checkMemory();
     return {
-      beforeMemory,
-      afterMemory,
-      freedMemory,
-      gcPerformed,
+      warning: currentStatus.level === 'warning' || currentStatus.level === 'critical',
+      critical: currentStatus.level === 'critical',
     };
   }
 

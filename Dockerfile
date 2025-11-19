@@ -23,8 +23,12 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install runtime dependencies
-RUN apk add --no-cache tini
+# Install runtime dependencies including timezone data
+RUN apk add --no-cache tini tzdata
+
+# Set default timezone to Shanghai (can be overridden by TZ environment variable)
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs

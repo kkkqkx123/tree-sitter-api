@@ -1,5 +1,6 @@
 /**
- * 资源清理器 - 简化的资源清理机制
+ * 资源清理器 - 统一资源清理机制
+ * 与MemoryMonitor集成，提供协调的资源管理
  */
 
 import { CleanupStrategy } from '../config/memory';
@@ -43,7 +44,8 @@ export class ResourceCleaner {
   }
 
   /**
-   * 执行清理
+   * 执行清理 - 现在与MemoryMonitor统一接口
+   * 为了向后兼容，保留此方法并委托给更通用的实现
    */
   async performCleanup(
     strategy: CleanupStrategy = CleanupStrategy.BASIC,

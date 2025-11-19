@@ -32,6 +32,7 @@ export interface LoggerConfig {
   // 元数据
   timestamps: {
     enabled: boolean;
+    timezone: string; // 时区，默认为 'Asia/Shanghai'
   };
 
   module: {
@@ -68,6 +69,7 @@ export const defaultLoggerConfig: LoggerConfig = {
 
   timestamps: {
     enabled: process.env['ENABLE_LOG_TIMESTAMP'] !== 'false',
+    timezone: process.env['TZ'] || 'Asia/Shanghai',
   },
 
   module: {

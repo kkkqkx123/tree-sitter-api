@@ -32,6 +32,7 @@ services:
       - API_PREFIX=/api
       - ENABLE_HELMET=true
       - TRUST_PROXY=false
+      - TZ=Asia/Shanghai
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:4001/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]

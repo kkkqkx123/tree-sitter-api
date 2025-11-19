@@ -11,7 +11,7 @@ interface ResourceGuardConfig {
   maxRequestSize: number; // 最大请求大小（字节）
   maxCodeLength: number; // 最大代码长度（字节）
   requestTimeout: number; // 请求超时时间（毫秒）
-  memoryCheckInterval: number; // 内存检查间隔（毫秒）
+  memoryCheckInterval: number; // 内存检查间隔（毫秒）- 已调整为减少重复检查
   maxConcurrentRequests: number; // 最大并发请求数
 }
 
@@ -22,7 +22,7 @@ const DEFAULT_CONFIG: ResourceGuardConfig = {
   maxRequestSize: 5 * 1024 * 1024, // 5MB
   maxCodeLength: 100 * 1024, // 100KB
   requestTimeout: 30000, // 30秒
-  memoryCheckInterval: 5000, // 5秒
+  memoryCheckInterval: 15000, // 15秒 - 调整间隔以减少重复检查
   maxConcurrentRequests: 10, // 10个并发请求
 };
 

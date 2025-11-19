@@ -141,11 +141,12 @@ class TreeSitterServer {
 
     res.on('finish', () => {
       const duration = Date.now() - start;
-      const memory = process.memoryUsage();
+      // 使用统一内存监控服务获取内存状态
+      const memoryStatus = this.memoryMonitor.checkMemory();
 
       log.info(
         'RequestLogger',
-        `${req.method} ${req.path} - ${res.statusCode} - ${duration}ms - Memory: ${Math.round(memory.heapUsed / 1024 / 1024)}MB - RequestID: ${requestId}`,
+        `${req.method} ${req.path} - ${res.statusCode} - ${duration}ms - Memory: ${memoryStatus.heapUsed}MB - RequestID: ${requestId}`,
       );
     });
 
@@ -226,12 +227,12 @@ class TreeSitterServer {
   private startPeriodicChecks(): void {
     // 立即执行一次检查
     this.performHealthCheck();
-    
+
     // 每小时执行一次检查
     this.healthCheckInterval = setInterval(() => {
       this.performHealthCheck();
     }, 60 * 60 * 1000); // 1小时
-    
+
     // 防止计时器阻止进程退出
     if (this.healthCheckInterval) {
       this.healthCheckInterval.unref();
@@ -243,11 +244,10 @@ class TreeSitterServer {
    */
   private performHealthCheck(): void {
     try {
-      const memory = process.memoryUsage();
-      const memoryUsageMB = Math.round(memory.heapUsed / 1024 / 1024);
-      
-      log.info('HealthCheck', `Memory usage: ${memoryUsageMB}MB`);
-      
+      // 使用统一的内存监控服务
+      const memoryStatus = this.memoryMonitor.checkMemory();
+      log.info('HealthCheck', `Memory usage: ${memoryStatus.heapUsed}MB`);
+
       // 检查日志系统状态
       if (logger.isFileLoggingInitialized()) {
         const logFilePath = logger.getLogFilePath();
@@ -255,11 +255,14 @@ class TreeSitterServer {
       } else {
         log.warn('HealthCheck', 'File logging not initialized');
       }
-      
+
       // 检查内存使用情况
+      const thresholds = { warning: 0.8, critical: 0.9 };
       const maxMemoryMB = parseInt(process.env['MAX_MEMORY_MB'] || '512', 10);
-      if (memoryUsageMB > maxMemoryMB * 0.8) {
-        log.warn('HealthCheck', `High memory usage: ${memoryUsageMB}MB/${maxMemoryMB}MB`);
+      const currentUsagePercentage = memoryStatus.heapUsed / maxMemoryMB;
+
+      if (currentUsagePercentage > thresholds.warning) {
+        log.warn('HealthCheck', `High memory usage: ${memoryStatus.heapUsed}MB/${maxMemoryMB}MB (${(currentUsagePercentage * 100).toFixed(1)}%)`);
       }
     } catch (error) {
       log.error('HealthCheck', `Health check failed: ${error instanceof Error ? error.message : String(error)}`);

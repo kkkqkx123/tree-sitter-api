@@ -106,7 +106,17 @@ export class Logger {
 
     // 时间戳
     if (this.config.timestamps.enabled) {
-      const timestamp = new Date().toISOString();
+      const timezone = this.config.timestamps.timezone || process.env.TZ || 'Asia/Shanghai';
+      const timestamp = new Date().toLocaleString('en-US', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
       parts.push(`[${timestamp}]`);
     }
 

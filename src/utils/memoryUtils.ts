@@ -80,9 +80,8 @@ export function getMemoryStats() {
   };
 }
 
-/**
- * 内存使用监控器
- */
+// 注释掉此冗余的MemoryMonitor类，统一使用core/MemoryMonitor
+/*
 export class MemoryMonitor {
   private measurements: Array<{
     timestamp: number;
@@ -90,9 +89,6 @@ export class MemoryMonitor {
   }> = [];
   private maxMeasurements: number = 10;
 
-  /**
-   * 记录内存使用情况
-   */
   recordMeasurement(): void {
     const usage = getMemoryUsage();
     this.measurements.push({
@@ -106,9 +102,6 @@ export class MemoryMonitor {
     }
   }
 
-  /**
-   * 获取内存使用趋势
-   */
   getMemoryTrend(): 'increasing' | 'decreasing' | 'stable' {
     if (this.measurements.length < 3) {
       return 'stable';
@@ -128,9 +121,6 @@ export class MemoryMonitor {
     return 'stable';
   }
 
-  /**
-   * 获取平均内存使用
-   */
   getAverageMemoryUsage(): NodeJS.MemoryUsage | null {
     if (this.measurements.length === 0) {
       return null;
@@ -157,9 +147,6 @@ export class MemoryMonitor {
     };
   }
 
-  /**
-   * 获取峰值内存使用
-   */
   getPeakMemoryUsage(): NodeJS.MemoryUsage | null {
     if (this.measurements.length === 0) {
       return null;
@@ -182,17 +169,12 @@ export class MemoryMonitor {
     );
   }
 
-  /**
-   * 清除测量记录
-   */
   clearMeasurements(): void {
     this.measurements = [];
   }
 
-  /**
-   * 获取测量记录数量
-   */
   getMeasurementCount(): number {
     return this.measurements.length;
   }
 }
+*/
