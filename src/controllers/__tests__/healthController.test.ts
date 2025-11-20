@@ -729,6 +729,8 @@ describe('healthController', () => {
         memoryFreed: 50,
         duration: 100,
         success: true,
+        freedMemory: 50,
+        cleanedResources: 0,
       };
 
       mockTreeSitterService.performCleanup.mockResolvedValue(mockCleanupResult);
@@ -766,6 +768,8 @@ describe('healthController', () => {
         memoryFreed: 50,
         duration: 100,
         success: true,
+        freedMemory: 50,
+        cleanedResources: 0,
       };
 
       mockTreeSitterService.performCleanup.mockResolvedValue(mockCleanupResult);

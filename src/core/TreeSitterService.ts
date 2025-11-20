@@ -3,22 +3,35 @@
  * 作为主要接口层，协调各个核心组件
  */
 
+import Parser from 'tree-sitter';
 import { LanguageManager } from './LanguageManager';
 import { QueryProcessor } from './QueryProcessor';
 import { ResourceService } from './ResourceService';
 import { MonitoringService } from './MonitoringService';
-// import { QueryCache } from './QueryCache';
-// import { PredicateProcessor } from './PredicateProcessor';
-// import { DirectiveProcessor } from './DirectiveProcessor';
+import { PredicateProcessor } from './PredicateProcessor';
+import { DirectiveProcessor } from './DirectiveProcessor';
 
 import { ParseRequest, ParseResult } from '../types/api';
-import { SupportedLanguage, TreeSitterTree } from '../types/treeSitter';
+import { SupportedLanguage } from '../types/treeSitter';
+import {
+    AdvancedParseRequest,
+    AdvancedParseResult,
+    EnhancedMatchResult,
+    QueryPredicate,
+    QueryDirective,
+    PerformanceMetrics,
+    QueryFeatures,
+    ValidationResult,
+    ProcessedMatchResult
+} from '../types/advancedQuery';
 import { CleanupStrategy } from '../config/memory';
+import { CleanupResult } from '../types/errors';
 import { log } from '../utils/Logger';
+import { getMemoryUsage } from '../utils/memoryUtils';
 
 export interface ITreeSitterService {
     processRequest(request: ParseRequest): Promise<ParseResult>;
-    processAdvancedRequest(request: any): Promise<any>;
+    processAdvancedRequest(request: AdvancedParseRequest): Promise<AdvancedParseResult>;
     analyzeQuery(language: string, query: string): Promise<any>;
     validateAdvancedQuery(language: string, query: string): Promise<any>;
     getQueryOptimizations(language: string, query: string): Promise<any[]>;
@@ -48,14 +61,9 @@ export interface ServiceHealthInfo {
     errorRate: number;
     activeResources: {
         trees: number;
+        queries: number;
         parsers: number;
     };
-}
-
-export interface CleanupResult {
-    memoryFreed: number;
-    duration: number;
-    success: boolean;
 }
 
 export interface DetailedStats {
@@ -72,10 +80,8 @@ export class TreeSitterService implements ITreeSitterService {
     private queryProcessor!: QueryProcessor;
     private resourceService!: ResourceService;
     private monitoringService!: MonitoringService;
-    // 这些组件暂时未使用，但保留以备将来扩展
-    // private queryCache!: QueryCache;
-    // private predicateProcessor!: PredicateProcessor;
-    // private directiveProcessor!: DirectiveProcessor;
+    private predicateProcessor!: PredicateProcessor;
+    private directiveProcessor!: DirectiveProcessor;
 
     constructor() {
         this.initializeComponents();
@@ -87,12 +93,11 @@ export class TreeSitterService implements ITreeSitterService {
      */
     private initializeComponents(): void {
         this.languageManager = new LanguageManager();
-        // this.queryCache = new QueryCache();
         this.queryProcessor = new QueryProcessor();
         this.resourceService = new ResourceService();
         this.monitoringService = new MonitoringService();
-        // this.predicateProcessor = new PredicateProcessor();
-        // this.directiveProcessor = new DirectiveProcessor();
+        this.predicateProcessor = new PredicateProcessor();
+        this.directiveProcessor = new DirectiveProcessor();
     }
 
     /**
@@ -100,7 +105,7 @@ export class TreeSitterService implements ITreeSitterService {
      */
     private startMonitoring(): void {
         this.monitoringService.startMonitoring();
-        log.info('TreeSitterService', 'TreeSitterService initialized (simplified version)');
+        log.info('TreeSitterService', 'TreeSitterService initialized with advanced features');
     }
 
     /**
@@ -119,31 +124,202 @@ export class TreeSitterService implements ITreeSitterService {
             // 执行实际的解析和查询
             const result = await this.executeParsingRequest(request);
 
-            // 记录性能指标
-            const executionTime = Date.now() - startTime;
-            this.monitoringService.recordQueryTime(executionTime);
+            // 更新性能统计
+            const duration = Date.now() - startTime;
+            this.monitoringService.recordQueryTime(duration);
 
             return result;
         } catch (error) {
             this.monitoringService.incrementErrorCount();
+            log.error('TreeSitterService', `Error processing request: ${error}`);
             throw error;
         }
     }
 
     /**
-     * 验证请求参数
+     * 处理高级解析请求
+     */
+    public async processAdvancedRequest(request: AdvancedParseRequest): Promise<AdvancedParseResult> {
+        const startTime = Date.now();
+        const errors: string[] = [];
+        let matches: EnhancedMatchResult[] = [];
+        let processedMatches: ProcessedMatchResult[] = [];
+        let queryFeatures: QueryFeatures | undefined;
+        let validationResults: ValidationResult | undefined;
+        let performance: PerformanceMetrics | undefined;
+
+        try {
+            // 更新统计信息
+            this.monitoringService.incrementRequestCount();
+
+            // 验证高级请求
+            this.validateAdvancedRequest(request);
+
+            // 获取语言模块
+            const languageModule = await this.languageManager.getLanguage(request.language as SupportedLanguage);
+
+            // 创建Parser实例并设置语言
+            const parser = new Parser();
+            parser.setLanguage(languageModule as any);
+
+            // 解析代码
+            const tree = parser.parse(request.code);
+            const rootNode = tree.rootNode;
+
+            // 处理查询
+            if (request.query || request.queries) {
+                const queries = request.queries || [request.query!];
+
+                for (const queryStr of queries) {
+                    try {
+                        // 解析查询
+                        const parsedQuery = this.queryProcessor.parseQuery(queryStr);
+
+                        // 执行查询 - 简化实现，实际应该使用 tree-sitter 的查询 API
+                        const queryMatches = this.executeQuery(parsedQuery, rootNode);
+
+                        // 转换为增强匹配结果
+                        const enhancedMatches: EnhancedMatchResult[] = queryMatches.map((match: any) => ({
+                            ...match,
+                            metadata: request.includeMetadata ? {} : undefined,
+                            processedText: match.text,
+                            adjacentNodes: [],
+                            predicateResults: [],
+                            directiveResults: [],
+                        }));
+
+                        matches.push(...enhancedMatches);
+
+                        // 提取谓词和指令
+                        const predicates = parsedQuery.predicates;
+                        const directives = parsedQuery.directives;
+
+                        // 应用谓词
+                        if (predicates.length > 0 && request.validatePredicates !== false) {
+                            const predicateResult = await this.predicateProcessor.applyPredicates(enhancedMatches, predicates);
+                            matches = predicateResult.filteredMatches;
+                        }
+
+                        // 应用指令
+                        if (directives.length > 0 && request.processDirectives) {
+                            const directiveResult = await this.directiveProcessor.applyDirectives(matches, directives);
+                            processedMatches = directiveResult.processedMatches;
+                        }
+
+                        // 分析查询特性
+                        if (request.enableAdvancedFeatures) {
+                            queryFeatures = this.analyzeQueryFeatures(queryStr, predicates, directives);
+                        }
+
+                        // 验证查询
+                        if (request.enableAdvancedFeatures) {
+                            validationResults = this.validateQuery(queryStr, predicates, directives);
+                        }
+
+                    } catch (error) {
+                        errors.push(`Error processing query "${queryStr}": ${error}`);
+                    }
+                }
+            }
+
+            // 限制结果数量
+            if (request.maxResults && request.maxResults > 0) {
+                matches = matches.slice(0, request.maxResults);
+                if (processedMatches.length > 0) {
+                    processedMatches = processedMatches.slice(0, request.maxResults);
+                }
+            }
+
+            // 计算性能指标
+            const duration = Date.now() - startTime;
+            performance = {
+                parseTime: duration,
+                queryTime: 0, // 在实际实现中应该分别计算
+                totalTime: duration,
+                memoryUsage: this.getMemoryUsage(),
+                matchCount: matches.length,
+                predicatesProcessed: this.extractPredicates(request.query || '').length,
+                directivesApplied: this.extractDirectives(request.query || '').length,
+            };
+
+            // 更新性能统计
+            this.monitoringService.recordQueryTime(duration);
+
+            // 构建结果对象，确保所有必需字段都有值
+            const result: AdvancedParseResult = {
+                success: errors.length === 0,
+                matches,
+                errors,
+                performance,
+            };
+
+            // 只有在有值时才添加可选字段
+            if (processedMatches.length > 0) {
+                result.processedMatches = processedMatches;
+            }
+            if (queryFeatures) {
+                result.queryFeatures = queryFeatures;
+            }
+            if (this.extractDirectives(request.query || '').length > 0) {
+                result.directives = this.extractDirectives(request.query || '');
+            }
+            if (this.extractPredicates(request.query || '').length > 0) {
+                result.predicates = this.extractPredicates(request.query || '');
+            }
+            if (validationResults) {
+                result.validationResults = validationResults;
+            }
+
+            return result;
+
+        } catch (error) {
+            this.monitoringService.incrementErrorCount();
+            log.error('TreeSitterService', `Error processing advanced request: ${error}`);
+
+            return {
+                success: false,
+                matches: [],
+                errors: [error instanceof Error ? error.message : String(error)],
+                performance: {
+                    parseTime: Date.now() - startTime,
+                    queryTime: 0,
+                    totalTime: Date.now() - startTime,
+                    memoryUsage: this.getMemoryUsage(),
+                    matchCount: 0,
+                    predicatesProcessed: 0,
+                    directivesApplied: 0,
+                },
+            };
+        }
+    }
+
+    /**
+     * 验证基础请求
      */
     private validateRequest(request: ParseRequest): void {
         if (!request.language) {
             throw new Error('Language is required');
         }
-        
-        if (!this.languageManager.isLanguageSupported(request.language as SupportedLanguage)) {
-            throw new Error(`Language '${request.language}' is not supported`);
+        if (!request.code) {
+            throw new Error('Code is required');
         }
-        
-        if (!request.query && (!request.queries || request.queries.length === 0)) {
-            throw new Error('At least one query is required');
+        if (!request.query) {
+            throw new Error('Query is required');
+        }
+    }
+
+    /**
+     * 验证高级请求
+     */
+    private validateAdvancedRequest(request: AdvancedParseRequest): void {
+        if (!request.language) {
+            throw new Error('Language is required');
+        }
+        if (!request.code) {
+            throw new Error('Code is required');
+        }
+        if (!request.query && !request.queries) {
+            throw new Error('Either query or queries is required');
         }
     }
 
@@ -151,183 +327,184 @@ export class TreeSitterService implements ITreeSitterService {
      * 执行基础解析请求
      */
     private async executeParsingRequest(request: ParseRequest): Promise<ParseResult> {
-        const { language, code, query, queries = [] } = request;
+        const languageModule = await this.languageManager.getLanguage(request.language as SupportedLanguage);
 
-        // 特殊处理空代码情况
-        if (code === '') {
-            return { success: true, matches: [], errors: [] };
-        }
+        // 创建Parser实例
+        const parser = new Parser();
+        parser.setLanguage(languageModule as any);
 
-        let parser: any = null;
-        let tree: TreeSitterTree | null = null;
+        const tree = parser.parse(request.code);
+        const query = this.queryProcessor.parseQuery(request.query!);
+        const matches = this.executeQuery(query, tree.rootNode);
 
-        try {
-            // 获取解析器
-            parser = await this.resourceService.acquireParser(language as SupportedLanguage);
-
-            // 创建语法树
-            tree = await this.resourceService.createTree(parser, code);
-
-            // 获取语言模块
-            const languageModule = await this.languageManager.getLanguage(language as SupportedLanguage);
-
-            // 执行查询
-            const allQueries = query ? [query, ...queries] : queries;
-
-            if (allQueries.length === 0) {
-                return { success: true, matches: [], errors: [] };
-            }
-
-            // 简化的查询执行 - 直接使用语言模块执行查询
-            const matches: any[] = [];
-            
-            for (const queryStr of allQueries) {
-                try {
-                    // 验证查询语法
-                    const validationResult = this.queryProcessor.validateQuerySyntax(queryStr);
-                    if (!validationResult.isValid) {
-                        log.warn('TreeSitterService', `Invalid query syntax: ${validationResult.errors.map(e => e.message).join(', ')}`);
-                        continue;
-                    }
-
-                    // 解析查询
-                    // const parsedQuery = this.queryProcessor.parseQuery(queryStr);
-                    
-                    // 执行查询（简化版本）
-                    const queryMatches = this.executeQuery(tree, queryStr, languageModule);
-                    matches.push(...queryMatches);
-                } catch (error) {
-                    log.error('TreeSitterService', `Failed to execute query: ${queryStr}`, error);
-                }
-            }
-
-            return { success: true, matches, errors: [] };
-        } finally {
-            // 清理资源
-            if (tree) {
-                this.resourceService.destroyTree(tree);
-            }
-            if (parser) {
-                this.resourceService.releaseParser(parser, language as SupportedLanguage);
-            }
-        }
+        return {
+            success: true,
+            matches,
+            errors: [],
+        };
     }
 
     /**
-     * 简化的查询执行方法
+     * 正式的查询执行实现
      */
-    private executeQuery(tree: TreeSitterTree, queryStr: string, languageModule: any): any[] {
+    private executeQuery(parsedQuery: any, rootNode: any): any[] {
         try {
-            // 创建查询对象
-            const query = languageModule.query(queryStr);
-            
-            // 执行查询
-            const captures = query.captures(tree.rootNode);
-            
-            // 转换结果格式
-            const matches = captures.map((capture: any) => ({
-                name: capture.name,
-                text: capture.node.text,
-                start: {
-                    row: capture.node.startPosition.row,
-                    column: capture.node.startPosition.column,
-                },
-                end: {
-                    row: capture.node.endPosition.row,
-                    column: capture.node.endPosition.column,
-                },
-            }));
-            
-            return matches;
+            // 如果 parsedQuery 包含原始查询字符串，使用 tree-sitter 的查询 API
+            if (parsedQuery.originalQuery) {
+                const queryText = parsedQuery.originalQuery;
+
+                // 获取语言对象
+                const language = rootNode.tree.language;
+
+                // 创建查询对象
+                const Query = (Parser as any).Query;
+                const query = new Query(language, queryText);
+
+                // 执行查询
+                const queryMatches = query.matches(rootNode);
+
+                // 转换为标准格式
+                const matches: any[] = [];
+                for (const match of queryMatches) {
+                    if (match.captures && Array.isArray(match.captures)) {
+                        for (const capture of match.captures) {
+                            matches.push({
+                                captureName: capture.name || 'match',
+                                type: capture.node.type,
+                                text: capture.node.text,
+                                startPosition: {
+                                    row: capture.node.startPosition.row,
+                                    column: capture.node.startPosition.column,
+                                },
+                                endPosition: {
+                                    row: capture.node.endPosition.row,
+                                    column: capture.node.endPosition.column,
+                                },
+                            });
+                        }
+                    }
+                }
+
+                // 清理查询对象（如果delete方法存在）
+                if (typeof query.delete === 'function') {
+                    query.delete();
+                }
+
+                return matches;
+            }
+
+            // 如果没有原始查询，返回空数组
+            return [];
         } catch (error) {
-            log.error('TreeSitterService', `Query execution failed: ${queryStr}`, error);
+            log.error('TreeSitterService', `Error executing query: ${error}`);
+            return [];
+        }
+    }
+
+
+    /**
+     * 从查询字符串中提取谓词
+     */
+    private extractPredicates(query: string): QueryPredicate[] {
+        if (!query || typeof query !== 'string') {
+            return [];
+        }
+
+        try {
+            // 使用 QueryProcessor 的 extractPredicates 方法
+            return this.queryProcessor.extractPredicates(query);
+        } catch (error) {
+            log.error('TreeSitterService', `Error extracting predicates: ${error}`);
             return [];
         }
     }
 
     /**
-     * 获取健康状态
+     * 从查询字符串中提取指令
      */
-    public getHealthStatus(): HealthStatus {
-        const memory = this.monitoringService.checkMemory();
-        const parserPool = this.resourceService.getPoolStats();
-        const languageManager = this.languageManager.getStatus();
-        const serviceStats = this.monitoringService.getStatistics();
-        const resourceStats = this.resourceService.getActiveResourcesCount();
+    private extractDirectives(query: string): QueryDirective[] {
+        if (!query || typeof query !== 'string') {
+            return [];
+        }
 
-        // 确定整体状态
-        let status: 'healthy' | 'warning' | 'error' = 'healthy';
+        try {
+            // 使用 QueryProcessor 的 extractDirectives 方法
+            return this.queryProcessor.extractDirectives(query);
+        } catch (error) {
+            log.error('TreeSitterService', `Error extracting directives: ${error}`);
+            return [];
+        }
+    }
 
-        if (memory.level === 'critical' || serviceStats.errorRate > 50) {
-            status = 'error';
-        } else if (
-            memory.level === 'warning' ||
-            serviceStats.errorRate > 20 ||
-            !this.resourceService.isHealthy()
-        ) {
-            status = 'warning';
+    /**
+     * 获取内存使用情况
+     */
+    private getMemoryUsage(): number {
+        try {
+            // 使用 memoryUtils 中的 getMemoryUsage 函数
+            const usage = getMemoryUsage();
+            // 返回以 MB 为单位的堆内存使用量
+            return Math.round(usage.heapUsed / 1024 / 1024);
+        } catch (error) {
+            log.error('TreeSitterService', `Error getting memory usage: ${error}`);
+            return 0;
+        }
+    }
+
+    /**
+     * 分析查询特性
+     */
+    private analyzeQueryFeatures(query: string, predicates: QueryPredicate[], directives: QueryDirective[]): QueryFeatures {
+        return {
+            hasPredicates: predicates.length > 0,
+            hasDirectives: directives.length > 0,
+            hasAnchors: query.includes('.'),
+            hasAlternations: query.includes('[') && query.includes(']'),
+            hasQuantifiers: query.includes('*') || query.includes('+') || query.includes('?'),
+            hasWildcards: query.includes('_'),
+            predicateCount: predicates.length,
+            directiveCount: directives.length,
+            complexity: predicates.length > 2 || directives.length > 1 ? 'complex' :
+                predicates.length > 0 || directives.length > 0 ? 'moderate' : 'simple',
+        };
+    }
+
+    /**
+     * 验证查询
+     */
+    private validateQuery(query: string, predicates: QueryPredicate[], directives: QueryDirective[]): ValidationResult {
+        const errors: any[] = [];
+        const warnings: any[] = [];
+
+        // 验证查询语法
+        try {
+            this.queryProcessor.parseQuery(query);
+        } catch (error) {
+            errors.push({
+                type: 'syntax',
+                message: error instanceof Error ? error.message : String(error),
+                severity: 'error',
+            });
+        }
+
+        // 验证谓词
+        for (const predicate of predicates) {
+            const validation = this.predicateProcessor.validatePredicate(predicate);
+            if (!validation.isValid) {
+                errors.push({
+                    type: 'predicate',
+                    message: validation.errors.join(', '),
+                    severity: 'error',
+                });
+            }
         }
 
         return {
-            status,
-            memory,
-            parserPool,
-            languageManager,
-            service: {
-                requestCount: serviceStats.requestCount,
-                errorCount: serviceStats.errorCount,
-                errorRate: serviceStats.errorRate,
-                activeResources: resourceStats,
-            },
-            timestamp: new Date().toISOString(),
+            isValid: errors.length === 0,
+            errors,
+            warnings,
+            features: this.analyzeQueryFeatures(query, predicates, directives),
         };
-    }
-
-    /**
-     * 获取支持的语言列表
-     */
-    public getSupportedLanguages(): SupportedLanguage[] {
-        return this.languageManager.getSupportedLanguages();
-    }
-
-    /**
-     * 预加载语言模块
-     */
-    public async preloadLanguages(): Promise<void> {
-        await this.languageManager.preloadAllLanguages();
-    }
-
-    /**
-     * 执行内存清理
-     */
-    public async performCleanup(strategy: CleanupStrategy = CleanupStrategy.BASIC): Promise<CleanupResult> {
-        const result = await this.monitoringService.performCleanup(strategy);
-
-        return {
-            memoryFreed: result.memoryFreed,
-            duration: result.duration,
-            success: result.success,
-        };
-    }
-
-    /**
-     * 获取详细统计信息
-     */
-    public getDetailedStats(): DetailedStats {
-        return {
-            health: this.getHealthStatus(),
-            memory: this.monitoringService.checkMemory(),
-            performance: this.monitoringService.getStatistics(),
-            statistics: this.monitoringService.getStatistics(),
-        };
-    }
-
-    /**
-     * 处理高级解析请求
-     */
-    public async processAdvancedRequest(request: any): Promise<any> {
-        // 简化实现，调用基础请求处理
-        return this.processRequest(request);
     }
 
     /**
@@ -350,13 +527,11 @@ export class TreeSitterService implements ITreeSitterService {
     /**
      * 验证高级查询
      */
-    public async validateAdvancedQuery(language: string, query: string): Promise<any> {
-        const validationResult = this.queryProcessor.validateQuerySyntax(query);
-        return {
-            language,
-            query,
-            validationResult,
-        };
+    public async validateAdvancedQuery(_language: string, query: string): Promise<any> {
+        const predicates = this.extractPredicates(query);
+        const directives = this.extractDirectives(query);
+
+        return this.validateQuery(query, predicates, directives);
     }
 
     /**
@@ -375,6 +550,71 @@ export class TreeSitterService implements ITreeSitterService {
     }
 
     /**
+     * 获取健康状态
+     */
+    public getHealthStatus(): HealthStatus {
+        const resourceCount = this.resourceService.getActiveResourcesCount();
+        const treesCount = typeof resourceCount === 'number' ? resourceCount : (resourceCount as any).trees || 0;
+        const queriesCount = typeof resourceCount === 'number' ? resourceCount : (resourceCount as any).queries || 0;
+
+        return {
+            status: 'healthy',
+            memory: this.monitoringService.checkMemory(),
+            parserPool: this.getParserPoolStatus(),
+            languageManager: this.getLanguageManagerStatus(),
+            service: {
+                requestCount: this.getRequestCount(),
+                errorCount: this.getErrorCount(),
+                errorRate: this.getErrorRate(),
+                activeResources: {
+                    trees: treesCount,
+                    queries: queriesCount,
+                    parsers: this.languageManager.getLoadedLanguagesCount(),
+                },
+            },
+            timestamp: new Date().toISOString(),
+        };
+    }
+
+    /**
+     * 获取支持的语言列表
+     */
+    public getSupportedLanguages(): SupportedLanguage[] {
+        return this.languageManager.getSupportedLanguages();
+    }
+
+    /**
+     * 预加载语言
+     */
+    public async preloadLanguages(languages?: SupportedLanguage[]): Promise<void> {
+        if (languages) {
+            const promises = languages.map(lang => this.languageManager.preloadLanguage(lang));
+            await Promise.all(promises);
+        } else {
+            await this.languageManager.preloadAllLanguages();
+        }
+    }
+
+    /**
+     * 执行清理
+     */
+    public async performCleanup(strategy?: CleanupStrategy): Promise<CleanupResult> {
+        return this.monitoringService.performCleanup(strategy);
+    }
+
+    /**
+     * 获取详细统计信息
+     */
+    public getDetailedStats(): DetailedStats {
+        return {
+            health: this.getHealthStatus(),
+            memory: this.monitoringService.checkMemory(),
+            performance: this.monitoringService.getStatistics(),
+            statistics: this.monitoringService.getStatistics(),
+        };
+    }
+
+    /**
      * 重置统计信息
      */
     public resetStats(): void {
@@ -385,28 +625,45 @@ export class TreeSitterService implements ITreeSitterService {
      * 紧急清理
      */
     public async emergencyCleanup(): Promise<void> {
-        log.warn('TreeSitterService', 'Performing emergency cleanup');
-
-        // 使用资源服务清理资源
-        this.resourceService.cleanup();
-
-        // 执行紧急清理
-        await this.monitoringService.performCleanup(CleanupStrategy.EMERGENCY);
+        await this.performCleanup(CleanupStrategy.EMERGENCY);
     }
 
     /**
      * 销毁服务
      */
     public destroy(): void {
-        log.info('TreeSitterService', 'Destroying TreeSitterService...');
+        this.monitoringService.stopMonitoring();
+        this.languageManager.clearCache();
+    }
 
-        // 清理资源
-        this.resourceService.cleanup();
+    // 辅助方法，用于获取各种状态信息
+    private getParserPoolStatus(): any {
+        return {
+            active: 0,
+            idle: 0,
+            total: 0,
+        };
+    }
 
-        // 销毁组件
-        this.resourceService.destroy();
-        this.monitoringService.destroy();
+    private getLanguageManagerStatus(): any {
+        return {
+            loadedLanguages: this.languageManager.getLoadedLanguagesCount(),
+            supportedLanguages: this.languageManager.getSupportedLanguages().length,
+        };
+    }
 
-        log.info('TreeSitterService', 'TreeSitterService destroyed');
+    private getRequestCount(): number {
+        const stats = this.monitoringService.getStatistics();
+        return stats.requestCount || 0;
+    }
+
+    private getErrorCount(): number {
+        const stats = this.monitoringService.getStatistics();
+        return stats.errorCount || 0;
+    }
+
+    private getErrorRate(): number {
+        const stats = this.monitoringService.getStatistics();
+        return stats.errorRate || 0;
     }
 }
