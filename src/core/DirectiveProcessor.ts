@@ -27,10 +27,21 @@ export class DirectiveProcessor {
     let currentMatches = [...matches];
 
     for (const directive of directives) {
-      const directiveResult = await this.applySingleDirective(currentMatches, directive);
-
-      // 更新当前匹配项为处理后的结果
-      currentMatches = directiveResult.result || currentMatches;
+      let directiveResult: DirectiveResult;
+      try {
+        directiveResult = await this.applySingleDirective(currentMatches, directive);
+        // 更新当前匹配项为处理后的结果（仅在成功应用时）
+        if (directiveResult.applied && directiveResult.result) {
+          currentMatches = directiveResult.result.matches || currentMatches;
+        }
+      } catch (error) {
+        // 如果发生错误，记录错误但继续处理其他指令
+        directiveResult = {
+          directive,
+          applied: false,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
 
       results.push(directiveResult);
     }
@@ -55,29 +66,21 @@ export class DirectiveProcessor {
     matches: EnhancedMatchResult[],
     directive: QueryDirective
   ): Promise<DirectiveResult> {
-    try {
-      switch (directive.type) {
-        case 'set':
-          return await this.processSetDirective(matches, directive);
-        case 'strip':
-          return await this.processStripDirective(matches, directive);
-        case 'select-adjacent':
-          return await this.processSelectAdjacentDirective(matches, directive);
-        default:
-          throw new DirectiveError(
-            directive.type,
-            `Unsupported directive type: ${directive.type}`,
-            directive.capture
-          );
-      }
-    } catch (error) {
-      log.warn('DirectiveProcessor', `Error applying directive: ${error}`);
-
-      return {
-        directive,
-        applied: false,
-        error: error instanceof Error ? error.message : String(error),
-      };
+    switch (directive.type) {
+      case 'set':
+        return await this.processSetDirective(matches, directive);
+      case 'strip':
+        return await this.processStripDirective(matches, directive);
+      case 'select-adjacent':
+        return await this.processSelectAdjacentDirective(matches, directive);
+      default:
+        const error = new DirectiveError(
+          directive.type,
+          `Unsupported directive type: ${directive.type}`,
+          directive.capture
+        );
+        log.warn('DirectiveProcessor', `Error applying directive: ${error.message}`);
+        throw error;
     }
   }
 
@@ -91,7 +94,7 @@ export class DirectiveProcessor {
     if (directive.parameters.length < 2) {
       throw new DirectiveError(
         directive.type,
-        'Set directive requires at least 2 parameters (key and value)',
+        'Set directive requires at least 2 parameters',
         directive.capture
       );
     }
@@ -158,8 +161,6 @@ export class DirectiveProcessor {
     }
 
     try {
-      const regex = new RegExp(pattern, 'g');
-
       // 根据捕获名称过滤匹配项
       const filteredMatches = directive.capture
         ? matches.filter(match => match.captureName === directive.capture)
@@ -168,9 +169,10 @@ export class DirectiveProcessor {
       // 从匹配项文本中移除模式
       const updatedMatches: EnhancedMatchResult[] = matches.map(match => {
         if (filteredMatches.includes(match)) {
-          const strippedText = match.processedText
-            ? match.processedText.replace(regex, '')
-            : match.text.replace(regex, '');
+          const originalText = match.processedText || match.text;
+          // 确保正则表达式有全局标志以替换所有匹配项
+          const globalRegex = new RegExp(pattern, 'g');
+          const strippedText = originalText.replace(globalRegex, '');
 
           return {
             ...match,
@@ -184,14 +186,14 @@ export class DirectiveProcessor {
         type: 'strip',
         description: `Stripped pattern '${pattern}' from text`,
       };
-      
-      if (matches[0]?.text !== undefined) {
+
+      if (matches[0] && matches[0].text !== undefined) {
         transformation.before = matches[0].text;
       }
-      if (updatedMatches[0]?.processedText !== undefined) {
+      if (updatedMatches[0] && updatedMatches[0].processedText !== undefined) {
         transformation.after = updatedMatches[0].processedText;
       }
-      
+
       const transformations: Transformation[] = [transformation];
 
       return {
@@ -306,7 +308,7 @@ export class DirectiveProcessor {
     switch (directive.type) {
       case 'set':
         if (directive.parameters.length < 2) {
-          errors.push('Set directive requires at least 2 parameters (key and value)');
+          errors.push('Set directive requires at least 2 parameters');
         }
         break;
 

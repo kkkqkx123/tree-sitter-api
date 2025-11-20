@@ -20,24 +20,62 @@ export class PredicateProcessor {
     predicates: QueryPredicate[]
   ): Promise<{ filteredMatches: EnhancedMatchResult[]; predicateResults: PredicateResult[] }> {
     const results: PredicateResult[] = [];
-    let currentMatches = [...matches];
+    const filteredMatches: EnhancedMatchResult[] = [];
 
-    for (const predicate of predicates) {
-      const predicateResults = await this.applySinglePredicate(currentMatches, predicate);
+    // 对每个匹配项应用所有谓词
+    for (const match of matches) {
+      let allPredicatesPassed = true;
+      const matchPredicateResults: PredicateResult[] = [];
+      let hasMatchingPredicate = false;
 
-      // 根据谓词结果过滤匹配项
-      if (!predicate.negate) {
-        currentMatches = currentMatches.filter((_, index) => predicateResults[index]?.passed ?? false);
-      } else {
-        // 对于否定谓词，保留未通过的匹配项
-        currentMatches = currentMatches.filter((_, index) => !(predicateResults[index]?.passed ?? false));
+      // 应用所有谓词到当前匹配项
+      for (const predicate of predicates) {
+        try {
+          // 检查谓词的capture名称是否与匹配项的captureName匹配
+          if (predicate.capture !== match.captureName) {
+            // 如果capture名称不匹配，则跳过此谓词，但仍添加到结果中
+            matchPredicateResults.push({
+              predicate,
+              passed: false,
+              details: `Predicate capture "${predicate.capture}" does not match match capture "${match.captureName}"`,
+            });
+            continue;
+          }
+
+          hasMatchingPredicate = true;
+          const predicateResult = await this.evaluatePredicate(match, predicate);
+          matchPredicateResults.push(predicateResult);
+
+          // 如果有任何一个谓词不通过（且不是否定谓词），则该匹配项不满足条件
+          if (!predicateResult.passed && !predicate.negate) {
+            allPredicatesPassed = false;
+          }
+        } catch (error) {
+          log.warn('PredicateProcessor', `Error evaluating predicate: ${error}`);
+
+          matchPredicateResults.push({
+            predicate,
+            passed: false,
+            details: error instanceof Error ? error.message : String(error),
+          });
+
+          allPredicatesPassed = false;
+        }
       }
 
-      results.push(...predicateResults);
+      // 只有当匹配项有对应的谓词且所有谓词都通过时，才保留该匹配项
+      if (hasMatchingPredicate && allPredicatesPassed) {
+        filteredMatches.push({
+          ...match,
+          predicateResults: matchPredicateResults,
+        });
+      }
+
+      results.push(...matchPredicateResults);
     }
 
     return {
-      filteredMatches: currentMatches,
+      filteredMatches,
       predicateResults: results,
     };
   }
@@ -419,7 +457,7 @@ export class PredicateProcessor {
       case 'is':
       case 'not-is':
         if (typeof predicate.value !== 'string') {
-          errors.push(`Predicate ${predicate.type} requires a string value`);
+          errors.push(`${predicate.type} predicate requires a string value`);
         } else if (predicate.type.includes('match')) {
           try {
             new RegExp(predicate.value as string);
@@ -431,9 +469,9 @@ export class PredicateProcessor {
 
       case 'any-of':
         if (!Array.isArray(predicate.value)) {
-          errors.push(`Predicate ${predicate.type} requires an array value`);
+          errors.push(`Any-of predicate requires an array value`);
         } else if (predicate.value.length === 0) {
-          errors.push(`Predicate ${predicate.type} requires a non-empty array`);
+          errors.push(`Any-of predicate requires a non-empty array`);
         }
         break;
     }

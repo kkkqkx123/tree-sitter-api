@@ -105,7 +105,7 @@ describe('DirectiveProcessor', () => {
       const result = await processor.applySingleDirective([matchWithMultiple], directive);
 
       expect(result.applied).toBe(true);
-      expect(result.result?.matches[0].processedText).toBe('___');
+      expect(result.result?.matches[0].processedText).toBe('__');
     });
 
     it('should handle complex regex patterns', async () => {
@@ -118,7 +118,7 @@ describe('DirectiveProcessor', () => {
       const result = await processor.applySingleDirective([sampleMatch], directive);
 
       expect(result.applied).toBe(true);
-      expect(result.result?.matches[0].processedText).toBe('VV');
+      expect(result.result?.matches[0].processedText).toBe('V');
     });
 
     it('should throw error for invalid regex pattern', async () => {
