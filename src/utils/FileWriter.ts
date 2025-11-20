@@ -61,6 +61,14 @@ export class FileWriter {
    * 写入日志行
    */
   write(message: string): void {
+    // Ensure we don't try to write if the directory doesn't exist
+    try {
+      this.ensureDirectory();
+    } catch (err) {
+      console.error('Failed to ensure log directory:', err);
+      return;
+    }
+
     this.queue.push(message);
 
     // 缓冲区达到阈值时立即刷新

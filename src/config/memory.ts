@@ -139,11 +139,19 @@ function parseSizeToBytes(sizeStr: string): number {
   }
 }
 
+// 使用变量而不是常量，以便可以刷新配置
+let _MemoryConfig = createMemoryConfig();
+
 // 导出内存配置对象（向后兼容）
-export const MemoryConfig = createMemoryConfig();
+export const MemoryConfig = _MemoryConfig;
 
 // 导出配置刷新函数
 export function refreshMemoryConfig(): void {
   // 重新创建配置对象
-  (MemoryConfig as any) = createMemoryConfig();
+  _MemoryConfig = createMemoryConfig();
+}
+
+// 导出一个获取当前配置的函数
+export function getMemoryConfig(): MemoryConfiguration {
+  return _MemoryConfig;
 }

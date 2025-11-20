@@ -41,14 +41,20 @@ export class LogRotator {
     }
 
     // 按日期轮转：跨天
-    const now = new Date();
-    const lastDate = this.lastRotationDate;
-    if (
-      now.getDate() !== lastDate.getDate() ||
-      now.getMonth() !== lastDate.getMonth() ||
-      now.getFullYear() !== lastDate.getFullYear()
-    ) {
-      return true;
+    try {
+      const now = new Date();
+      const lastDate = this.lastRotationDate;
+      if (
+        now.getDate() !== lastDate.getDate() ||
+        now.getMonth() !== lastDate.getMonth() ||
+        now.getFullYear() !== lastDate.getFullYear()
+      ) {
+        return true;
+      }
+    } catch (error) {
+      console.error('Error checking date rotation:', error);
+      // 如果日期检查失败，仍然按大小轮转
+      return currentSize >= this.options.maxSize;
     }
 
     return false;

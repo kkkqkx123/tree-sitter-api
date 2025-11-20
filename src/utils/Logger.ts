@@ -155,8 +155,8 @@ export class Logger {
       logFn(formatted, ...args);
     }
 
-    // 输出到文件
-    if (this.fileWriter && this.isInitialized) {
+    // 输出到文件 - only if file logging is enabled, writer exists, and initialized
+    if (this.config.file.enabled && this.fileWriter && this.isInitialized) {
       this.writeToFile(formatted);
     }
   }
@@ -165,7 +165,7 @@ export class Logger {
    * 写入文件并检查轮转
    */
   private writeToFile(message: string): void {
-    if (!this.fileWriter || !this.logRotator || !this.isInitialized) {
+    if (!this.config.file.enabled || !this.fileWriter || !this.logRotator || !this.isInitialized) {
       return;
     }
 
