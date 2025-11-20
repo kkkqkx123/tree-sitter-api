@@ -203,12 +203,43 @@ export class ErrorHandler {
       errorCounts[type] = count;
     }
 
+    // 计算错误率
+    const totalErrors = Array.from(this.errorCounts.values()).reduce((sum, count) => sum + count, 0);
+    const errorRate = totalErrors > 0 ? (totalErrors / totalErrors) * 100 : 0;
+    
+    // 计算错误类型统计
+    const errorsByType: Record<string, number> = {};
+    recentErrors.forEach(item => {
+      errorsByType[item.error.type] = (errorsByType[item.error.type] || 0) + 1;
+    });
+    
+    // 计算错误严重程度统计
+    const errorsBySeverity: Record<string, number> = {};
+    recentErrors.forEach(item => {
+      errorsBySeverity[item.error.severity] = (errorsBySeverity[item.error.severity] || 0) + 1;
+    });
+
     return {
-      totalErrors: this.lastErrors.length,
-      recentErrors: recentErrors.length,
-      errorCounts,
-      mostCommonError: this.getMostCommonError(),
-      errorHistory: this.lastErrors.map(e => e.error.toJSON()),
+      totalErrors: totalErrors,
+      errorsByType: errorsByType as any,
+      errorsBySeverity: errorsBySeverity as any,
+      recentErrors: recentErrors.map(item => ({
+        id: `${item.error.type}_${item.timestamp}`,
+        error: {
+          type: item.error.type,
+          severity: item.error.severity,
+          message: item.error.message,
+          context: item.error.context || {},
+          timestamp: item.error.timestamp,
+          stack: item.error.stack || '',
+        },
+        count: 1,
+        firstOccurrence: new Date(item.timestamp),
+        lastOccurrence: new Date(item.timestamp),
+        resolved: false,
+      })),
+      errorRate: Math.round(errorRate * 100) / 100,
+      averageResolutionTime: 0, // 简化实现
     };
   }
 
@@ -216,19 +247,19 @@ export class ErrorHandler {
    * 获取最常见的错误类型
    * @returns 最常见的错误类型
    */
-  private getMostCommonError(): ErrorType | null {
-    let maxCount = 0;
-    let mostCommon: ErrorType | null = null;
+  // private getMostCommonError(): ErrorType | null { // 暂时未使用
+  //   let maxCount = 0;
+  //   let mostCommon: ErrorType | null = null;
 
-    for (const [type, count] of this.errorCounts) {
-      if (count > maxCount) {
-        maxCount = count;
-        mostCommon = type;
-      }
-    }
+  //   for (const [type, count] of this.errorCounts) {
+  //     if (count > maxCount) {
+  //       maxCount = count;
+  //       mostCommon = type;
+  //     }
+  //   }
 
-    return mostCommon;
-  }
+  //   return mostCommon;
+  // }
 
   /**
    * 清理错误历史记录
@@ -246,7 +277,7 @@ export class ErrorHandler {
   isErrorRateHigh(threshold: number = 10): boolean {
     const oneMinuteAgo = Date.now() - 60000;
     const recentErrors = this.lastErrors.filter(
-      e => e.timestamp > oneMinuteAgo,
+      (e: any) => e.timestamp > oneMinuteAgo,
     );
     return recentErrors.length > threshold;
   }

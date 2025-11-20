@@ -12,8 +12,8 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 import { ServerConfig } from './config/server';
 import { TreeSitterService } from './core/TreeSitterService';
-import { MemoryMonitor } from './core/MemoryMonitor';
-import { ResourceCleaner } from './core/ResourceCleaner';
+import { MonitoringService } from './core/MonitoringService';
+import { ResourceService } from './core/ResourceService';
 import { ErrorHandler } from './errors/ErrorHandler';
 import { RecoveryStrategy } from './errors/RecoveryStrategy';
 import { globalErrorHandler } from './middleware/globalErrorHandler';
@@ -28,8 +28,8 @@ import languagesRoutes from './routes/languages';
 class TreeSitterServer {
   private app: Application;
   private service: TreeSitterService;
-  private memoryMonitor: MemoryMonitor;
-  private resourceCleaner: ResourceCleaner;
+  private monitoringService: MonitoringService;
+  private resourceService: ResourceService;
   private errorHandler: ErrorHandler;
   private recoveryStrategy: RecoveryStrategy;
   private server: any;
@@ -38,17 +38,13 @@ class TreeSitterServer {
   constructor() {
     this.app = express();
     this.service = new TreeSitterService();
-    this.memoryMonitor = new MemoryMonitor();
-    this.resourceCleaner = new ResourceCleaner();
+    this.monitoringService = new MonitoringService();
+    this.resourceService = new ResourceService();
     this.errorHandler = new ErrorHandler();
     this.recoveryStrategy = new RecoveryStrategy(
-      this.resourceCleaner,
-      this.memoryMonitor,
+      this.resourceService,
+      this.monitoringService,
     );
-
-    // 设置资源清理器的依赖
-    this.resourceCleaner.setParserPool(this.service['parserPool']);
-    this.resourceCleaner.setLanguageManager(this.service['languageManager']);
 
     this.initializeMiddleware();
     this.initializeRoutes();
@@ -79,7 +75,7 @@ class TreeSitterServer {
     );
 
     // 资源保护中间件
-    this.app.use(resourceGuard(this.memoryMonitor, this.resourceCleaner));
+    this.app.use(resourceGuard(this.monitoringService, this.resourceService));
 
     // 请求日志中间件
     if (ServerConfig.LOGGING.ENABLE_REQUEST_LOGGING) {
@@ -142,7 +138,7 @@ class TreeSitterServer {
     res.on('finish', () => {
       const duration = Date.now() - start;
       // 使用统一内存监控服务获取内存状态
-      const memoryStatus = this.memoryMonitor.checkMemory();
+      const memoryStatus = this.monitoringService.checkMemory();
 
       log.info(
         'RequestLogger',
@@ -245,7 +241,7 @@ class TreeSitterServer {
   private performHealthCheck(): void {
     try {
       // 使用统一的内存监控服务
-      const memoryStatus = this.memoryMonitor.checkMemory();
+      const memoryStatus = this.monitoringService.checkMemory();
       log.info('HealthCheck', `Memory usage: ${memoryStatus.heapUsed}MB`);
 
       // 检查日志系统状态
@@ -336,8 +332,8 @@ class TreeSitterServer {
       this.service.destroy();
 
       // 销毁其他组件
-      this.memoryMonitor.destroy();
-      this.resourceCleaner.destroy();
+      this.monitoringService.destroy();
+      this.resourceService.destroy();
 
       log.info('Server', 'All resources cleaned up');
     } catch (error) {

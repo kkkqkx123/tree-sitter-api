@@ -9,8 +9,6 @@ import {
   rateLimiter,
   healthCheck,
 } from '../resourceGuard';
-import { MemoryMonitor } from '../../core/MemoryMonitor';
-import { ResourceCleaner } from '../../core/ResourceCleaner';
 import { CleanupStrategy } from '../../config/memory';
 import { MemoryStatus } from '../../types/errors';
 
@@ -19,12 +17,20 @@ const mockMemoryMonitor = {
   checkMemory: jest.fn(),
   shouldCleanup: jest.fn(),
   getMemoryStats: jest.fn(),
-} as unknown as jest.Mocked<MemoryMonitor>;
+} as any;
 
-// 模拟 ResourceCleaner
-const mockResourceCleaner = {
-  performCleanup: jest.fn(),
-} as unknown as jest.Mocked<ResourceCleaner>;
+// 模拟 ResourceService
+const mockResourceService = {
+  cleanup: jest.fn(),
+  emergencyCleanup: jest.fn(),
+  getActiveResourcesCount: jest.fn(),
+  getPoolStats: jest.fn(),
+  isHealthy: jest.fn(),
+ destroy: jest.fn(),
+} as any;
+
+// 为mockMemoryMonitor添加performCleanup方法
+(mockMemoryMonitor as any).performCleanup = jest.fn();
 
 // 模拟 ErrorHandler
 const mockErrorHandler = {
@@ -75,19 +81,21 @@ describe('resourceGuard 中间件', () => {
     mockNext = jest.fn();
 
     // 创建中间件实例
-    middleware = resourceGuard(mockMemoryMonitor, mockResourceCleaner);
+    middleware = resourceGuard(mockMemoryMonitor, mockResourceService);
   });
 
   describe('resourceGuard', () => {
     it('应该允许正常请求通过', async () => {
       // 准备测试数据
       const mockMemoryStatus: MemoryStatus = {
-        level: 'normal',
-        heapUsed: 150,
+        level: 'healthy',
+        status: 'healthy',
+        heapUsed: 100,
         heapTotal: 200,
-        rss: 100,
+        rss: 150,
         external: 50,
-        trend: 'stable',
+        threshold: 80,
+        usage: 50,
       };
 
       mockMemoryMonitor.checkMemory.mockReturnValue(mockMemoryStatus);
@@ -168,11 +176,13 @@ describe('resourceGuard 中间件', () => {
       // 准备测试数据
       const mockMemoryStatus: MemoryStatus = {
         level: 'critical',
-        heapUsed: 350,
-        heapTotal: 400,
-        rss: 300,
+        status: 'critical',
+        heapUsed: 400,
+        heapTotal: 500,
+        rss: 450,
         external: 100,
-        trend: 'increasing',
+        threshold: 80,
+        usage: 80,
       };
 
       const mockCleanupResult = {
@@ -185,7 +195,7 @@ describe('resourceGuard 中间件', () => {
       mockMemoryMonitor.checkMemory
         .mockReturnValueOnce(mockMemoryStatus) // 第一次检查是critical
         .mockReturnValueOnce({ ...mockMemoryStatus, level: 'warning' }); // 清理后是warning
-      mockResourceCleaner.performCleanup.mockResolvedValue(mockCleanupResult);
+      (mockMemoryMonitor as any).performCleanup.mockResolvedValue(mockCleanupResult);
 
       // 模拟 process.memoryUsage
       const originalMemoryUsage = process.memoryUsage;
@@ -205,7 +215,7 @@ describe('resourceGuard 中间件', () => {
       );
 
       // 验证结果
-      expect(mockResourceCleaner.performCleanup).toHaveBeenCalledWith(
+      expect((mockMemoryMonitor as any).performCleanup).toHaveBeenCalledWith(
         CleanupStrategy.EMERGENCY,
       );
       expect(mockNext).toHaveBeenCalled();
@@ -218,11 +228,13 @@ describe('resourceGuard 中间件', () => {
       // 准备测试数据
       const mockMemoryStatus: MemoryStatus = {
         level: 'critical',
-        heapUsed: 350,
-        heapTotal: 400,
-        rss: 300,
+        status: 'critical',
+        heapUsed: 400,
+        heapTotal: 500,
+        rss: 450,
         external: 100,
-        trend: 'increasing',
+        threshold: 80,
+        usage: 80,
       };
 
       const mockCleanupResult = {
@@ -235,7 +247,7 @@ describe('resourceGuard 中间件', () => {
       mockMemoryMonitor.checkMemory
         .mockReturnValueOnce(mockMemoryStatus) // 第一次检查是critical
         .mockReturnValueOnce(mockMemoryStatus); // 清理后仍然是critical
-      mockResourceCleaner.performCleanup.mockResolvedValue(mockCleanupResult);
+      (mockMemoryMonitor as any).performCleanup.mockResolvedValue(mockCleanupResult);
 
       // 执行测试
       await middleware(
@@ -245,7 +257,7 @@ describe('resourceGuard 中间件', () => {
       );
 
       // 验证结果
-      expect(mockResourceCleaner.performCleanup).toHaveBeenCalledWith(
+      expect((mockMemoryMonitor as any).performCleanup).toHaveBeenCalledWith(
         CleanupStrategy.EMERGENCY,
       );
       expect(mockResponse.status).toHaveBeenCalledWith(503);
@@ -262,7 +274,7 @@ describe('resourceGuard 中间件', () => {
       // 创建中间件实例，设置最大并发请求数为1
       const limitedMiddleware = resourceGuard(
         mockMemoryMonitor,
-        mockResourceCleaner,
+        mockResourceService,
         {
           maxConcurrentRequests: 1,
         },
@@ -270,12 +282,14 @@ describe('resourceGuard 中间件', () => {
 
       // 准备测试数据
       const mockMemoryStatus: MemoryStatus = {
-        level: 'normal',
-        heapUsed: 150,
+        level: 'healthy',
+        status: 'healthy',
+        heapUsed: 100,
         heapTotal: 200,
-        rss: 100,
+        rss: 150,
         external: 50,
-        trend: 'stable',
+        threshold: 80,
+        usage: 50,
       };
 
       mockMemoryMonitor.checkMemory.mockReturnValue(mockMemoryStatus);
@@ -338,12 +352,14 @@ describe('resourceGuard 中间件', () => {
     it('应该设置请求超时', async () => {
       // 准备测试数据
       const mockMemoryStatus: MemoryStatus = {
-        level: 'normal',
-        heapUsed: 150,
+        level: 'healthy',
+        status: 'healthy',
+        heapUsed: 100,
         heapTotal: 200,
-        rss: 100,
+        rss: 150,
         external: 50,
-        trend: 'stable',
+        threshold: 80,
+        usage: 50,
       };
 
       mockMemoryMonitor.checkMemory.mockReturnValue(mockMemoryStatus);
@@ -379,12 +395,14 @@ describe('resourceGuard 中间件', () => {
     it('应该在内存增长过高时触发清理', async () => {
       // 准备测试数据
       const mockMemoryStatus: MemoryStatus = {
-        level: 'normal',
-        heapUsed: 150,
-        heapTotal: 200,
-        rss: 100,
-        external: 50,
-        trend: 'stable',
+        level: 'warning',
+        status: 'warning',
+        heapUsed: 250,
+        heapTotal: 300,
+        rss: 200,
+        external: 75,
+        threshold: 80,
+        usage: 83,
       };
 
       const mockCleanupResult = {
@@ -396,7 +414,7 @@ describe('resourceGuard 中间件', () => {
 
       mockMemoryMonitor.checkMemory.mockReturnValue(mockMemoryStatus);
       mockMemoryMonitor.shouldCleanup.mockReturnValue(true);
-      mockResourceCleaner.performCleanup.mockResolvedValue(mockCleanupResult);
+      (mockMemoryMonitor as any).performCleanup.mockResolvedValue(mockCleanupResult);
 
       // 模拟 process.memoryUsage - 第一次返回低内存，第二次返回高内存
       const originalMemoryUsage = process.memoryUsage;
@@ -445,7 +463,7 @@ describe('resourceGuard 中间件', () => {
       }
 
       // 验证结果
-      expect(mockResourceCleaner.performCleanup).toHaveBeenCalledWith(
+      expect((mockMemoryMonitor as any).performCleanup).toHaveBeenCalledWith(
         CleanupStrategy.AGGRESSIVE,
       );
 
@@ -481,12 +499,14 @@ describe('resourceGuard 中间件', () => {
     it('应该添加内存状态到请求对象', () => {
       // 准备测试数据
       const mockMemoryStatus: MemoryStatus = {
-        level: 'normal',
-        heapUsed: 150,
+        level: 'healthy',
+        status: 'healthy',
+        heapUsed: 100,
         heapTotal: 200,
-        rss: 100,
+        rss: 150,
         external: 50,
-        trend: 'stable',
+        threshold: 80,
+        usage: 50,
       };
 
       mockMemoryMonitor.checkMemory.mockReturnValue(mockMemoryStatus);
@@ -507,11 +527,13 @@ describe('resourceGuard 中间件', () => {
       // 准备测试数据
       const mockMemoryStatus: MemoryStatus = {
         level: 'critical',
-        heapUsed: 350,
-        heapTotal: 400,
-        rss: 300,
+        status: 'critical',
+        heapUsed: 400,
+        heapTotal: 500,
+        rss: 450,
         external: 100,
-        trend: 'increasing',
+        threshold: 80,
+        usage: 80,
       };
 
       mockMemoryMonitor.checkMemory.mockReturnValue(mockMemoryStatus);
@@ -535,11 +557,13 @@ describe('resourceGuard 中间件', () => {
       // 准备测试数据
       const mockMemoryStatus: MemoryStatus = {
         level: 'warning',
+        status: 'warning',
         heapUsed: 250,
         heapTotal: 300,
         rss: 200,
         external: 75,
-        trend: 'increasing',
+        threshold: 80,
+        usage: 83,
       };
 
       mockMemoryMonitor.checkMemory.mockReturnValue(mockMemoryStatus);
@@ -657,12 +681,14 @@ describe('resourceGuard 中间件', () => {
     it('应该返回健康状态', () => {
       // 准备测试数据
       const mockMemoryStatus: MemoryStatus = {
-        level: 'normal',
-        heapUsed: 150,
+        level: 'healthy',
+        status: 'healthy',
+        heapUsed: 100,
         heapTotal: 200,
-        rss: 100,
+        rss: 150,
         external: 50,
-        trend: 'stable',
+        threshold: 80,
+        usage: 50,
       };
 
       const mockErrorStats = {
@@ -685,7 +711,7 @@ describe('resourceGuard 中间件', () => {
 
       mockMemoryMonitor.checkMemory.mockReturnValue(mockMemoryStatus);
       mockErrorHandler.getErrorStats.mockReturnValue(mockErrorStats);
-      mockMemoryMonitor.getMemoryStats.mockReturnValue(mockMemoryStats);
+      (mockMemoryMonitor as any).getStatistics = jest.fn().mockReturnValue(mockMemoryStats);
 
       // 执行测试
       healthMiddleware(mockRequest as Request, mockResponse as Response);
@@ -709,11 +735,13 @@ describe('resourceGuard 中间件', () => {
       // 准备测试数据
       const mockMemoryStatus: MemoryStatus = {
         level: 'critical',
-        heapUsed: 350,
-        heapTotal: 400,
-        rss: 300,
+        status: 'critical',
+        heapUsed: 400,
+        heapTotal: 500,
+        rss: 450,
         external: 100,
-        trend: 'increasing',
+        threshold: 80,
+        usage: 80,
       };
 
       const mockErrorStats = {
@@ -736,7 +764,7 @@ describe('resourceGuard 中间件', () => {
 
       mockMemoryMonitor.checkMemory.mockReturnValue(mockMemoryStatus);
       mockErrorHandler.getErrorStats.mockReturnValue(mockErrorStats);
-      mockMemoryMonitor.getMemoryStats.mockReturnValue(mockMemoryStats);
+      (mockMemoryMonitor as any).getStatistics = jest.fn().mockReturnValue(mockMemoryStats);
 
       // 执行测试
       healthMiddleware(mockRequest as Request, mockResponse as Response);
@@ -759,12 +787,14 @@ describe('resourceGuard 中间件', () => {
     it('应该在错误数量高时返回警告状态', () => {
       // 准备测试数据
       const mockMemoryStatus: MemoryStatus = {
-        level: 'normal',
-        heapUsed: 150,
+        level: 'healthy',
+        status: 'healthy',
+        heapUsed: 100,
         heapTotal: 200,
-        rss: 100,
+        rss: 150,
         external: 50,
-        trend: 'stable',
+        threshold: 80,
+        usage: 50,
       };
 
       const mockErrorStats = {
@@ -787,7 +817,7 @@ describe('resourceGuard 中间件', () => {
 
       mockMemoryMonitor.checkMemory.mockReturnValue(mockMemoryStatus);
       mockErrorHandler.getErrorStats.mockReturnValue(mockErrorStats);
-      mockMemoryMonitor.getMemoryStats.mockReturnValue(mockMemoryStats);
+      (mockMemoryMonitor as any).getStatistics = jest.fn().mockReturnValue(mockMemoryStats);
 
       // 执行测试
       healthMiddleware(mockRequest as Request, mockResponse as Response);

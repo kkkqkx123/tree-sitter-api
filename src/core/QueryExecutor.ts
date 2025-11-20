@@ -19,23 +19,22 @@ import {
   QuerySyntaxError
 } from '../types/errors';
 import { log } from '../utils/Logger';
-import { QueryValidator } from './QueryValidator';
-import { QueryParser } from './QueryParser';
+// import { QueryValidator } from './QueryValidator';
+// import { QueryParser } from './QueryParser';
+import { QueryProcessor } from './QueryProcessor';
 import { queryConfig } from '../config/query';
 import { QueryOptimizer } from './QueryOptimizer';
 import { PredicateProcessor } from './PredicateProcessor';
 import { DirectiveProcessor } from './DirectiveProcessor';
 
 export class QueryExecutor {
-  private validator: QueryValidator;
-  private parser: QueryParser;
+  private queryProcessor: QueryProcessor;
   private optimizer: QueryOptimizer;
   private predicateProcessor: PredicateProcessor;
   private directiveProcessor: DirectiveProcessor;
 
   constructor() {
-    this.validator = new QueryValidator();
-    this.parser = new QueryParser();
+    this.queryProcessor = new QueryProcessor();
     this.optimizer = new QueryOptimizer();
     this.predicateProcessor = new PredicateProcessor();
     this.directiveProcessor = new DirectiveProcessor();
@@ -54,17 +53,17 @@ export class QueryExecutor {
 
     try {
       // 验证查询语法
-      const validation = this.validator.validateQuerySyntax(query);
+      const validation = this.queryProcessor.validateQuerySyntax(query);
       if (!validation.isValid) {
         throw new QuerySyntaxError(
-          `Query validation failed: ${validation.errors.map(e => e.message).join(', ')}`,
+          `Query validation failed: ${validation.errors.map((e: any) => e.message).join(', ')}`,
           validation.errors[0]?.position,
           query
         );
       }
 
       // 解析查询
-      const parsedQuery = this.parser.parseQuery(query);
+      const parsedQuery = this.queryProcessor.parseQuery(query);
 
       // 优化查询（如果启用）
       let optimizedQuery = parsedQuery;
@@ -341,7 +340,7 @@ export class QueryExecutor {
    */
   public async validateQuery(query: string): Promise<boolean> {
     try {
-      const validation = this.validator.validateQuerySyntax(query);
+      const validation = this.queryProcessor.validateQuerySyntax(query);
       return validation.isValid;
     } catch (error) {
       log.warn('QueryExecutor', `Query validation error: ${error}`);

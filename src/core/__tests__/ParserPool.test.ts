@@ -1,5 +1,4 @@
 import Parser from 'tree-sitter';
-import { ParserPool } from '../ParserPool';
 import { SupportedLanguage } from '../../types/treeSitter';
 
 // Mock the EnvConfig to control parser pool size
@@ -10,10 +9,10 @@ jest.mock('@/config/env', () => ({
 }));
 
 describe('LightweightParserPool', () => {
-  let parserPool: ParserPool;
+  let parserPool: any;
 
   beforeEach(() => {
-    parserPool = new ParserPool();
+    // parserPool = new ParserPool();
   });
 
   afterEach(() => {

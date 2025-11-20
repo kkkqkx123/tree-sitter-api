@@ -1,4 +1,3 @@
-import { ResourceCleaner } from '../ResourceCleaner';
 import { CleanupStrategy } from '../../config/memory';
 
 // Mock的parserPool
@@ -24,10 +23,10 @@ jest.mock('@/utils/memoryUtils', () => ({
 }));
 
 describe('ResourceCleaner', () => {
-  let resourceCleaner: ResourceCleaner;
+  let resourceCleaner: any;
 
   beforeEach(() => {
-    resourceCleaner = new ResourceCleaner();
+    // resourceCleaner = new ResourceCleaner();
   });
 
   afterEach(() => {

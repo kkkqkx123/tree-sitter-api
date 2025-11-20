@@ -5,8 +5,8 @@
 import express from 'express';
 import { ErrorHandler } from '../errors/ErrorHandler';
 import { RecoveryStrategy } from '../errors/RecoveryStrategy';
-import { MemoryMonitor } from '../core/MemoryMonitor';
-import { ResourceCleaner } from '../core/ResourceCleaner';
+import { MonitoringService } from '../core/MonitoringService';
+import { ResourceService } from '../core/ResourceService';
 import {
   globalErrorHandler,
   resourceGuard,
@@ -24,10 +24,10 @@ export function createAppWithErrorHandling(): express.Application {
   const app = express();
 
   // 初始化核心组件
-  const memoryMonitor = new MemoryMonitor();
-  const resourceCleaner = new ResourceCleaner();
+  const monitoringService = new MonitoringService();
+  const resourceService = new ResourceService();
   const errorHandler = new ErrorHandler();
-  const recoveryStrategy = new RecoveryStrategy(resourceCleaner, memoryMonitor);
+  const recoveryStrategy = new RecoveryStrategy(resourceService, monitoringService);
   const treeSitterService = new TreeSitterService();
 
   // 基础中间件
@@ -35,10 +35,10 @@ export function createAppWithErrorHandling(): express.Application {
   app.use(errorLogger);
 
   // 资源保护中间件
-  app.use(resourceGuard(memoryMonitor, resourceCleaner));
+  app.use(resourceGuard(monitoringService, resourceService));
 
   // 健康检查端点
-  app.get('/api/health', healthCheck(memoryMonitor, errorHandler));
+  app.get('/api/health', healthCheck(monitoringService, errorHandler));
 
   // 解析API端点
   app.post(
@@ -145,9 +145,9 @@ export function errorHandlingExamples() {
  */
 export async function recoveryStrategyExamples() {
   // 创建恢复策略
-  const memoryMonitor = new MemoryMonitor();
-  const resourceCleaner = new ResourceCleaner();
-  const recoveryStrategy = new RecoveryStrategy(resourceCleaner, memoryMonitor);
+  const monitoringService = new MonitoringService();
+  const resourceService = new ResourceService();
+  const recoveryStrategy = new RecoveryStrategy(resourceService, monitoringService);
 
   // 示例1: 尝试从内存错误恢复
   const memoryError = new TreeSitterError(

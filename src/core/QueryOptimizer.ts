@@ -140,10 +140,12 @@ export class QueryOptimizer {
 
     for (const directive of stripDirectives) {
       const capture = directive.capture;
-      if (!groupedByCapture.has(capture)) {
+      if (capture && !groupedByCapture.has(capture)) {
         groupedByCapture.set(capture, []);
       }
-      groupedByCapture.get(capture)!.push(directive);
+      if (capture) {
+        groupedByCapture.get(capture)!.push(directive);
+      }
     }
 
     for (const [capture, directives] of groupedByCapture.entries()) {
@@ -340,8 +342,10 @@ export class QueryOptimizer {
     const stripCaptures = new Map<string, number>();
 
     for (const directive of stripDirectives) {
-      const count = stripCaptures.get(directive.capture) || 0;
-      stripCaptures.set(directive.capture, count + 1);
+      if (directive.capture) {
+        const count = stripCaptures.get(directive.capture) || 0;
+        stripCaptures.set(directive.capture, count + 1);
+      }
     }
 
     for (const [capture, count] of stripCaptures.entries()) {

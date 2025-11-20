@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { MemoryMonitor } from '../core/MemoryMonitor';
-import { ResourceCleaner } from '../core/ResourceCleaner';
+import { MonitoringService } from '../core/MonitoringService';
+import { ResourceService } from '../core/ResourceService';
 import { CleanupStrategy } from '../config/memory';
 import { log } from '../utils/Logger';
 
@@ -31,8 +31,8 @@ const DEFAULT_CONFIG: ResourceGuardConfig = {
  * 监控内存使用情况，限制请求大小，防止资源耗尽
  */
 export const resourceGuard = (
-  memoryMonitor: MemoryMonitor,
-  resourceCleaner: ResourceCleaner,
+  monitoringService: MonitoringService,
+  _resourceService: ResourceService, // 暂时未使用，但保留以备将来扩展
   config: Partial<ResourceGuardConfig> = {},
 ) => {
   const finalConfig = { ...DEFAULT_CONFIG, ...config };
@@ -88,7 +88,7 @@ export const resourceGuard = (
       const now = Date.now();
       if (now - lastMemoryCheck > finalConfig.memoryCheckInterval) {
         lastMemoryCheck = now;
-        const memoryStatus = memoryMonitor.checkMemory();
+        const memoryStatus = monitoringService.checkMemory();
 
         // 如果内存状态严重，尝试清理
         if (memoryStatus.level === 'critical') {
@@ -96,10 +96,10 @@ export const resourceGuard = (
             'ResourceGuard',
             'Critical memory usage detected, attempting cleanup',
           );
-          await resourceCleaner.performCleanup(CleanupStrategy.EMERGENCY);
+          await monitoringService.performCleanup(CleanupStrategy.EMERGENCY);
 
           // 再次检查内存状态
-          const statusAfterCleanup = memoryMonitor.checkMemory();
+          const statusAfterCleanup = monitoringService.checkMemory();
           if (statusAfterCleanup.level === 'critical') {
             return void res.status(503).json({
               success: false,
@@ -143,17 +143,16 @@ export const resourceGuard = (
           );
 
           // 如果需要，触发清理
-          const currentMemoryStatus = memoryMonitor.checkMemory();
+          const currentMemoryStatus = monitoringService.checkMemory();
           if (
-            memoryMonitor.shouldCleanup() ||
-            (currentMemoryStatus.level === 'critical' ||
-              currentMemoryStatus.level === 'warning')
+            currentMemoryStatus.level === 'warning' ||
+            currentMemoryStatus.level === 'critical'
           ) {
             const strategy =
               currentMemoryStatus.level === 'critical'
                 ? CleanupStrategy.EMERGENCY
                 : CleanupStrategy.AGGRESSIVE;
-            void resourceCleaner.performCleanup(strategy);
+            void monitoringService.performCleanup(strategy);
           }
         }
       });
@@ -172,7 +171,7 @@ export const resourceGuard = (
  * 内存监控中间件
  * 专门用于监控内存使用情况
  */
-export const memoryMonitor = (monitor: MemoryMonitor) => {
+export const memoryMonitor = (monitor: MonitoringService) => {
   return (req: Request, res: Response, next: NextFunction) => {
     const memoryStatus = monitor.checkMemory();
 
@@ -219,8 +218,7 @@ export const rateLimiter = (
       return void res.status(429).json({
         success: false,
         errors: [
-          `Too many requests: ${ipRequests.count}/${maxRequests} per ${
-            windowMs / 1000
+          `Too many requests: ${ipRequests.count}/${maxRequests} per ${windowMs / 1000
           }s`,
         ],
         timestamp: new Date().toISOString(),
@@ -245,13 +243,13 @@ export const rateLimiter = (
  * 提供详细的系统健康状态
  */
 export const healthCheck = (
-  memoryMonitor: MemoryMonitor,
+  monitoringService: MonitoringService,
   errorHandler: any,
 ): ((req: Request, res: Response) => void) => {
   return (_req: Request, res: Response): void => {
-    const memoryStatus = memoryMonitor.checkMemory();
+    const memoryStatus = monitoringService.checkMemory();
     const errorStats = errorHandler.getErrorStats();
-    const memoryStats = memoryMonitor.getMemoryStats();
+    const memoryStats = monitoringService.getStatistics();
 
     // 确定整体健康状态
     let overallStatus: 'healthy' | 'warning' | 'error' = 'healthy';

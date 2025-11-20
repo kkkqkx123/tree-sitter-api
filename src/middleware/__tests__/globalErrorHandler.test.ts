@@ -103,6 +103,7 @@ describe('globalErrorHandler 中间件', () => {
       expect(mockRecoveryStrategy.attemptRecovery).toHaveBeenCalledWith(
         treeSitterError,
       );
+      // 验证结果
       expect(mockResponse.status).toHaveBeenCalledWith(500);
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
@@ -114,7 +115,7 @@ describe('globalErrorHandler 中间件', () => {
         recovery: {
           attempted: true,
           strategy: 'test_strategy',
-          duration: 100,
+          error: undefined,
         },
       });
     });
@@ -202,7 +203,7 @@ describe('globalErrorHandler 中间件', () => {
         recovery: {
           attempted: true,
           strategy: 'test_strategy',
-          duration: 100,
+          error: undefined,
         },
         details: { detail: 'Additional error detail' },
         stack: expect.any(String),
@@ -253,7 +254,7 @@ describe('globalErrorHandler 中间件', () => {
         recovery: {
           attempted: true,
           strategy: 'test_strategy',
-          duration: 100,
+          error: undefined,
         },
       });
     });

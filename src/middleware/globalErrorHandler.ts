@@ -47,8 +47,8 @@ export const globalErrorHandler = (
       recovery: recoveryResult.success
         ? {
             attempted: true,
-            action: recoveryResult.action,
-            message: recoveryResult.message,
+            strategy: recoveryResult.strategy,
+            error: recoveryResult.error,
           }
         : {
             attempted: false,
@@ -59,7 +59,8 @@ export const globalErrorHandler = (
     // 在开发环境中包含更多错误详情
     if (process.env['NODE_ENV'] === 'development') {
       (errorResponse as Record<string, unknown>)['details'] =
-        treeSitterError.details;
+        // treeSitterError.details; // 移除不存在的属性
+        treeSitterError.context;
       (errorResponse as Record<string, unknown>)['stack'] =
         treeSitterError.stack;
     }

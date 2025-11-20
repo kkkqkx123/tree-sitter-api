@@ -1,304 +1,916 @@
 /**
- * 查询处理器 - 处理查询执行和结果处理
+ * 查询处理器 - 合并查询解析、验证和优化功能
+ * 提供统一的查询处理接口
  */
 
-import { TreeSitterTree } from '../types/treeSitter';
-import { MatchResult } from '../types/api';
-import { EnhancedMatchResult, AdvancedParseResult } from '../types/advancedQuery';
-import { QueryExecutor } from './QueryExecutor';
+import {
+  QueryPredicate,
+  QueryDirective,
+  QueryPattern,
+  ParsedQuery,
+  QueryFeatures,
+  StructureValidationResult,
+  PredicateType,
+  DirectiveType,
+  ValidationResult,
+  ValidationError,
+  ValidationWarning,
+  // PredicateValidationResult,
+  // DirectiveValidationResult,
+  OptimizationSuggestion,
+} from '../types/advancedQuery';
+import { Position } from '../types/api';
+import { queryConfig } from '../config/query';
 import { log } from '../utils/Logger';
 
-export interface IQueryProcessor {
-  executeQueries(tree: TreeSitterTree, queries: string[], languageModule: any): Promise<MatchResult[]>;
-  executeAdvancedQueries(tree: TreeSitterTree, queries: string[], languageModule: any): Promise<EnhancedMatchResult[]>;
-  processResults(results: any[]): any;
-  mergeResults(results: AdvancedParseResult[], request: any): AdvancedParseResult;
-}
+export class QueryProcessor {
+  private predicateRegex: RegExp;
+  private directiveRegex: RegExp;
+  private anchorRegex: RegExp;
+  private alternationRegex: RegExp;
+  private quantifierRegex: RegExp;
+  private wildcardRegex: RegExp;
 
-export class QueryProcessor implements IQueryProcessor {
-  private queryExecutor: QueryExecutor;
-
-  constructor(queryExecutor: QueryExecutor) {
-    this.queryExecutor = queryExecutor;
-  }
-
-  /**
-   * 执行基础查询
-   */
-  public async executeQueries(
-    tree: TreeSitterTree,
-    queries: string[],
-    languageModule: any,
-  ): Promise<MatchResult[]> {
-    const matches: MatchResult[] = [];
-
-    log.info('QueryProcessor', `Executing ${queries.length} basic queries`);
-
-    for (const queryString of queries) {
-      try {
-        // 使用QueryExecutor执行查询（支持高级功能）
-        const result = await this.queryExecutor.executeQueryWithAdvancedFeatures(
-          tree,
-          queryString,
-          languageModule
-        );
-
-        if (result.success) {
-          // 将EnhancedMatchResult转换为MatchResult
-          const basicMatches = result.matches.map(match => ({
-            captureName: match.captureName,
-            type: match.type,
-            text: match.text,
-            startPosition: match.startPosition,
-            endPosition: match.endPosition,
-          }));
-          
-          matches.push(...basicMatches);
-          log.debug('QueryProcessor', `Query "${queryString}" found ${basicMatches.length} matches`);
-        } else {
-          log.warn(
-            'QueryProcessor',
-            `Query execution failed: ${result.errors.join(', ')}`,
-          );
-          // 继续处理其他查询，不中断整个请求
-        }
-      } catch (error) {
-        log.warn(
-          'QueryProcessor',
-          `Query execution failed: ${error instanceof Error ? error.message : String(error)}`,
-        );
-        // 继续处理其他查询，不中断整个请求
-      }
-    }
-
-    log.info('QueryProcessor', `Basic query execution completed. Total matches: ${matches.length}`);
-    return matches;
-  }
-
-  /**
-   * 执行高级查询
-   */
-  public async executeAdvancedQueries(
-    tree: TreeSitterTree,
-    queries: string[],
-    languageModule: any,
-  ): Promise<EnhancedMatchResult[]> {
-    const matches: EnhancedMatchResult[] = [];
-
-    log.info('QueryProcessor', `Executing ${queries.length} advanced queries`);
-
-    for (const queryString of queries) {
-      try {
-        // 使用QueryExecutor执行高级查询
-        const result = await this.queryExecutor.executeQueryWithAdvancedFeatures(
-          tree,
-          queryString,
-          languageModule
-        );
-
-        if (result.success) {
-          matches.push(...result.matches);
-          log.debug('QueryProcessor', `Advanced query "${queryString}" found ${result.matches.length} matches`);
-        } else {
-          log.warn(
-            'QueryProcessor',
-            `Advanced query execution failed: ${result.errors.join(', ')}`,
-          );
-          // 继续处理其他查询，不中断整个请求
-        }
-      } catch (error) {
-        log.warn(
-          'QueryProcessor',
-          `Advanced query execution failed: ${error instanceof Error ? error.message : String(error)}`,
-        );
-        // 继续处理其他查询，不中断整个请求
-      }
-    }
-
-    log.info('QueryProcessor', `Advanced query execution completed. Total matches: ${matches.length}`);
-    return matches;
-  }
-
-  /**
-   * 处理查询结果
-   */
-  public processResults(results: any[]): any {
-    // 这里可以添加结果处理逻辑，如过滤、排序、转换等
-    return results;
-  }
-
-  /**
-   * 合并多个查询结果
-   */
-  public mergeResults(results: AdvancedParseResult[], request: any): AdvancedParseResult {
-    const allMatches = results.flatMap(r => r.matches);
-    const allErrors = results.flatMap(r => r.errors);
-    const allPredicates = results.flatMap(r => r.predicates || []);
-    const allDirectives = results.flatMap(r => r.directives || []);
+  constructor() {
+    // 谓词正则表达式
+    this.predicateRegex = /#(\w+)(?:-?(\w+))?\?([^)]*)/g;
     
-    // 应用结果限制
-    const limitedMatches = request.maxResults 
-      ? allMatches.slice(0, request.maxResults)
-      : allMatches;
+    // 指令正则表达式
+    this.directiveRegex = /#(\w+)!([^)]*)/g;
+    
+    // 锚点正则表达式
+    this.anchorRegex = /\./g;
+    
+    // 交替查询正则表达式
+    this.alternationRegex = /\[[^\]]*\]/g;
+    
+    // 量词正则表达式
+    this.quantifierRegex = /[+*?]/g;
+    
+    // 通配符正则表达式
+    this.wildcardRegex = /_\)/g;
+  }
 
-    // 计算聚合性能指标
-    const totalQueryTime = results.reduce((sum, r) => sum + (r.performance?.queryTime || 0), 0);
-    const totalPredicatesProcessed = results.reduce((sum, r) => sum + (r.performance?.predicatesProcessed || 0), 0);
-    const totalDirectivesApplied = results.reduce((sum, r) => sum + (r.performance?.directivesApplied || 0), 0);
-    const totalMatchCount = results.reduce((sum, r) => sum + (r.performance?.matchCount || 0), 0);
+  /**
+   * 处理查询 - 解析、验证和优化
+   */
+  public processQuery(query: string): {
+    parsedQuery: ParsedQuery;
+    validationResult: ValidationResult;
+    optimizationSuggestions: OptimizationSuggestion[];
+  } {
+    log.debug('QueryProcessor', `Processing query: ${query}`);
 
-    const hasAnySuccess = results.some(r => r.success);
+    // 解析查询
+    const parsedQuery = this.parseQuery(query);
+    
+    // 验证查询
+    const validationResult = this.validateQuerySyntax(query);
+    
+    // 生成优化建议
+    const optimizationSuggestions = this.generateOptimizationSuggestions(parsedQuery);
 
-    // 分析查询特性
-    const queryFeatures = this.analyzeQueryFeatures(allPredicates, allDirectives);
-
+    log.debug('QueryProcessor', `Query processing completed: ${validationResult.isValid ? 'valid' : 'invalid'}`);
+    
     return {
-      success: hasAnySuccess && allErrors.length === 0,
-      matches: limitedMatches,
-      errors: allErrors,
-      queryFeatures,
-      directives: allDirectives,
-      predicates: allPredicates,
-      performance: {
-        parseTime: 0, // 解析时间在外部计算
-        queryTime: totalQueryTime,
-        totalTime: totalQueryTime,
-        memoryUsage: process.memoryUsage().heapUsed / 1024 / 1024,
-        matchCount: totalMatchCount,
-        predicatesProcessed: totalPredicatesProcessed,
-        directivesApplied: totalDirectivesApplied,
-      },
+      parsedQuery,
+      validationResult,
+      optimizationSuggestions,
+    };
+  }
+
+  /**
+   * 解析查询字符串
+   */
+  public parseQuery(query: string): ParsedQuery {
+    const patterns = this.extractPatterns(query);
+    const predicates = this.extractPredicates(query);
+    const directives = this.extractDirectives(query);
+    const features = this.analyzeQueryFeatures(query, predicates, directives);
+
+    const parsedQuery: ParsedQuery = {
+      originalQuery: query,
+      patterns,
+      predicates,
+      directives,
+      features,
+    };
+
+    log.debug('QueryProcessor', `Parsed query with ${predicates.length} predicates and ${directives.length} directives`);
+    
+    return parsedQuery;
+  }
+
+  /**
+   * 验证查询语法
+   */
+  public validateQuerySyntax(query: string): ValidationResult {
+    const errors: ValidationError[] = [];
+    const warnings: ValidationWarning[] = [];
+    
+    log.debug('QueryProcessor', `Validating query syntax: ${query}`);
+    
+    // 基本语法检查
+    if (!query || query.trim().length === 0) {
+      errors.push({
+        type: 'syntax',
+        message: 'Query cannot be empty',
+        severity: 'error',
+      });
+      return {
+        isValid: false,
+        errors,
+        warnings,
+        features: this.getEmptyFeatures(),
+      };
+    }
+    
+    // 检查括号匹配
+    const bracketErrors = this.validateBrackets(query);
+    errors.push(...bracketErrors);
+    
+    // 检查引号匹配
+    const quoteErrors = this.validateQuotes(query);
+    errors.push(...quoteErrors);
+    
+    // 检查基本模式语法
+    const patternErrors = this.validatePatterns(query);
+    errors.push(...patternErrors);
+    
+    // 性能警告
+    const performanceWarnings = this.checkPerformanceIssues(query);
+    warnings.push(...performanceWarnings);
+    
+    // 分析查询特性
+    const features = this.analyzeQueryFeatures(query);
+    
+    const isValid = errors.length === 0;
+    
+    log.debug('QueryProcessor', `Query validation result: ${isValid ? 'valid' : 'invalid'} (${errors.length} errors, ${warnings.length} warnings)`);
+    
+    return {
+      isValid,
+      errors,
+      warnings,
+      features,
+      suggestions: this.generateSuggestions(errors, warnings, features),
+    };
+  }
+
+  /**
+   * 生成优化建议
+   */
+  public generateOptimizationSuggestions(parsedQuery: ParsedQuery): OptimizationSuggestion[] {
+    const suggestions: OptimizationSuggestion[] = [];
+
+    // 谓词优化建议
+    suggestions.push(...this.suggestPredicateOptimizations(parsedQuery.predicates));
+
+    // 指令优化建议
+    suggestions.push(...this.suggestDirectiveOptimizations(parsedQuery.directives));
+
+    // 模式优化建议
+    suggestions.push(...this.suggestPatternOptimizations(parsedQuery));
+
+    // 结构优化建议
+    suggestions.push(...this.suggestStructureOptimizations(parsedQuery));
+
+    return suggestions;
+  }
+
+  /**
+   * 提取查询模式
+   */
+  private extractPatterns(query: string): QueryPattern[] {
+    const patterns: QueryPattern[] = [];
+    
+    // 简单的模式提取 - 按行分割
+    const lines = query.split('\n').filter(line => line.trim() && !line.trim().startsWith(';'));
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      const captures = this.extractCaptures(trimmedLine);
+      const predicates = this.extractPredicates(trimmedLine);
+      const directives = this.extractDirectives(trimmedLine);
+      
+      patterns.push({
+        pattern: trimmedLine,
+        captures,
+        predicates,
+        directives,
+      });
+    }
+    
+    return patterns;
+  }
+
+  /**
+   * 提取捕获名称
+   */
+  private extractCaptures(pattern: string): string[] {
+    const captures: string[] = [];
+    const captureRegex = /@(\w+)/g;
+    let match;
+    
+    while ((match = captureRegex.exec(pattern)) !== null) {
+      if (match[1]) {
+        captures.push(match[1]);
+      }
+    }
+    
+    return captures;
+  }
+
+  /**
+   * 提取谓词
+   */
+  public extractPredicates(query: string): QueryPredicate[] {
+    const predicates: QueryPredicate[] = [];
+    let match;
+    
+    // 重置正则表达式状态
+    this.predicateRegex.lastIndex = 0;
+    
+    while ((match = this.predicateRegex.exec(query)) !== null) {
+      const predicate = this.parsePredicate(match, query);
+      if (predicate) {
+        predicates.push(predicate);
+      }
+    }
+    
+    return predicates;
+  }
+
+  /**
+   * 解析单个谓词
+   */
+  private parsePredicate(match: RegExpExecArray, query: string): QueryPredicate | null {
+    const fullMatch = match[0];
+    const predicateType = match[1] as PredicateType;
+    const modifier = match[2];
+    const args = match[3];
+    
+    // 检查谓词类型是否被允许
+    if (!queryConfig.isPredicateAllowed(predicateType)) {
+      log.warn('QueryProcessor', `Predicate type '${predicateType}' is not allowed`);
+      return null;
+    }
+    
+    // 解析修饰符
+    let negate = false;
+    let quantifier: 'any' | 'all' | undefined;
+    
+    if (modifier === 'not') {
+      negate = true;
+    } else if (modifier === 'any') {
+      quantifier = 'any';
+    }
+    
+    // 解析参数
+    let value: string | string[] = '';
+    if (args) {
+      const trimmedArgs = args.trim();
+      
+      // 检查是否是数组格式
+      if (trimmedArgs.startsWith('[') && trimmedArgs.endsWith(']')) {
+        try {
+          value = JSON.parse(trimmedArgs);
+        } catch (error) {
+          log.warn('QueryProcessor', `Failed to parse predicate arguments: ${trimmedArgs}`);
+          return null;
+        }
+      } else {
+        // 移除引号
+        value = trimmedArgs.replace(/^["']|["']$/g, '');
+      }
+    }
+    
+    // 获取位置信息
+    const position = this.getPosition(query, match.index);
+    
+    const predicate: QueryPredicate = {
+      type: predicateType,
+      capture: this.extractCaptureFromPredicate(fullMatch),
+      value,
+      negate,
+      position,
+    };
+    
+    if (quantifier) {
+      predicate.quantifier = quantifier;
+    }
+    
+    return predicate;
+  }
+
+  /**
+   * 从谓词中提取捕获名称
+   */
+  private extractCaptureFromPredicate(predicate: string): string {
+    const captureMatch = predicate.match(/@(\w+)/);
+    return captureMatch?.[1] ?? '';
+  }
+
+  /**
+   * 提取指令
+   */
+  public extractDirectives(query: string): QueryDirective[] {
+    const directives: QueryDirective[] = [];
+    let match;
+    
+    // 重置正则表达式状态
+    this.directiveRegex.lastIndex = 0;
+    
+    while ((match = this.directiveRegex.exec(query)) !== null) {
+      const directive = this.parseDirective(match, query);
+      if (directive) {
+        directives.push(directive);
+      }
+    }
+    
+    return directives;
+  }
+
+  /**
+   * 解析单个指令
+   */
+  private parseDirective(match: RegExpExecArray, query: string): QueryDirective | null {
+    const directiveType = match[1] as DirectiveType;
+    const args = match[2];
+    
+    // 检查指令类型是否被允许
+    if (!queryConfig.isDirectiveAllowed(directiveType)) {
+      log.warn('QueryProcessor', `Directive type '${directiveType}' is not allowed`);
+      return null;
+    }
+    
+    // 解析参数
+    const parameters: any[] = [];
+    if (args) {
+      const trimmedArgs = args.trim();
+      
+      // 简单的参数解析
+      const argMatches = trimmedArgs.match(/@(\w+)|"([^"]*)"|'([^']*)'|(\w+)/g);
+      if (argMatches) {
+        for (const argMatch of argMatches) {
+          if (argMatch.startsWith('@')) {
+            parameters.push(argMatch);
+          } else if (argMatch.startsWith('"') || argMatch.startsWith("'")) {
+            parameters.push(argMatch.slice(1, -1));
+          } else {
+            parameters.push(argMatch);
+          }
+        }
+      }
+    }
+    
+    // 获取位置信息
+    const position = this.getPosition(query, match.index);
+    
+    return {
+      type: directiveType,
+      capture: this.extractCaptureFromDirective(match[0]),
+      parameters,
+      position,
+    };
+  }
+
+  /**
+   * 从指令中提取捕获名称
+   */
+  private extractCaptureFromDirective(directive: string): string {
+    const captureMatch = directive.match(/@(\w+)/);
+    return captureMatch?.[1] ?? '';
+  }
+
+  /**
+   * 获取文本位置
+   */
+  private getPosition(text: string, index: number): Position {
+    const lines = text.substring(0, index).split('\n');
+    const lastLine = lines[lines.length - 1] ?? '';
+    return {
+      row: lines.length - 1,
+      column: lastLine.length,
     };
   }
 
   /**
    * 分析查询特性
    */
-  private analyzeQueryFeatures(predicates: any[], directives: any[]): any {
-    const hasPredicates = predicates.length > 0;
-    const hasDirectives = directives.length > 0;
-    
-    // 简化的特性分析
-    let complexity: 'simple' | 'moderate' | 'complex' = 'simple';
-    if (predicates.length > 5 || directives.length > 3) {
-      complexity = 'complex';
-    } else if (predicates.length > 2 || directives.length > 1) {
-      complexity = 'moderate';
-    }
-
-    return {
-      hasPredicates,
-      hasDirectives,
-      hasAnchors: false, // 需要从查询字符串中分析
-      hasAlternations: false, // 需要从查询字符串中分析
-      hasQuantifiers: false, // 需要从查询字符串中分析
-      hasWildcards: false, // 需要从查询字符串中分析
-      predicateCount: predicates.length,
-      directiveCount: directives.length,
-      complexity,
-    };
-  }
-
-  /**
-   * 过滤重复匹配
-   */
-  public filterDuplicateMatches(matches: EnhancedMatchResult[]): EnhancedMatchResult[] {
-    const seen = new Set<string>();
-    const filtered: EnhancedMatchResult[] = [];
-
-    for (const match of matches) {
-      const key = `${match.startPosition.row}:${match.startPosition.column}-${match.endPosition.row}:${match.endPosition.column}-${match.text}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        filtered.push(match);
+  public analyzeQueryFeatures(
+    query?: string,
+    predicates?: QueryPredicate[],
+    directives?: QueryDirective[]
+  ): QueryFeatures {
+    if (query) {
+      const hasPredicates = /#\w+\?/.test(query);
+      const hasDirectives = /#\w+!/.test(query);
+      const hasAnchors = this.anchorRegex.test(query);
+      const hasAlternations = this.alternationRegex.test(query);
+      const hasQuantifiers = this.quantifierRegex.test(query);
+      const hasWildcards = this.wildcardRegex.test(query);
+      
+      // 计算谓词和指令数量
+      const predicateCount = (query.match(/#\w+\?/g) || []).length;
+      const directiveCount = (query.match(/#\w+!/g) || []).length;
+      
+      // 计算复杂度
+      let complexity: 'simple' | 'moderate' | 'complex' = 'simple';
+      const featureCount = [
+        hasPredicates,
+        hasDirectives,
+        hasAnchors,
+        hasAlternations,
+        hasQuantifiers,
+        hasWildcards,
+      ].filter(Boolean).length;
+      
+      if (featureCount >= 4 || predicateCount > 5 || directiveCount > 3) {
+        complexity = 'complex';
+      } else if (featureCount >= 2 || predicateCount > 2 || directiveCount > 1) {
+        complexity = 'moderate';
       }
-    }
-
-    log.debug('QueryProcessor', `Filtered ${matches.length - filtered.length} duplicate matches`);
-    return filtered;
-  }
-
-  /**
-   * 排序匹配结果
-   */
-  public sortMatches(matches: EnhancedMatchResult[], sortBy: 'position' | 'text' | 'type' = 'position'): EnhancedMatchResult[] {
-    const sorted = [...matches];
-
-    switch (sortBy) {
-      case 'position':
-        sorted.sort((a, b) => {
-          if (a.startPosition.row !== b.startPosition.row) {
-            return a.startPosition.row - b.startPosition.row;
-          }
-          return a.startPosition.column - b.startPosition.column;
-        });
-        break;
-      case 'text':
-        sorted.sort((a, b) => a.text.localeCompare(b.text));
-        break;
-      case 'type':
-        sorted.sort((a, b) => a.type.localeCompare(b.type));
-        break;
-    }
-
-    return sorted;
-  }
-
-  /**
-   * 分组匹配结果
-   */
-  public groupMatches(matches: EnhancedMatchResult[], groupBy: 'type' | 'captureName'): Record<string, EnhancedMatchResult[]> {
-    const groups: Record<string, EnhancedMatchResult[]> = {};
-
-    for (const match of matches) {
-      const key = groupBy === 'type' ? match.type : match.captureName;
-      if (!groups[key]) {
-        groups[key] = [];
-      }
-      groups[key].push(match);
-    }
-
-    return groups;
-  }
-
-  /**
-   * 获取查询统计信息
-   */
-  public getQueryStatistics(matches: EnhancedMatchResult[]): {
-    totalMatches: number;
-    uniqueTypes: string[];
-    uniqueCaptures: string[];
-    averageTextLength: number;
-    largestMatch: EnhancedMatchResult | null;
-    smallestMatch: EnhancedMatchResult | null;
-  } {
-    if (matches.length === 0) {
+      
       return {
-        totalMatches: 0,
-        uniqueTypes: [],
-        uniqueCaptures: [],
-        averageTextLength: 0,
-        largestMatch: null,
-        smallestMatch: null,
+        hasPredicates,
+        hasDirectives,
+        hasAnchors,
+        hasAlternations,
+        hasQuantifiers,
+        hasWildcards,
+        predicateCount,
+        directiveCount,
+        complexity,
+      };
+    } else if (predicates && directives) {
+      const hasPredicates = predicates.length > 0;
+      const hasDirectives = directives.length > 0;
+      
+      // 计算复杂度
+      let complexity: 'simple' | 'moderate' | 'complex' = 'simple';
+      const featureCount = [hasPredicates, hasDirectives].filter(Boolean).length;
+      
+      if (featureCount >= 2 || predicates.length > 5 || directives.length > 3) {
+        complexity = 'complex';
+      } else if (predicates.length > 2 || directives.length > 1) {
+        complexity = 'moderate';
+      }
+      
+      return {
+        hasPredicates,
+        hasDirectives,
+        hasAnchors: false,
+        hasAlternations: false,
+        hasQuantifiers: false,
+        hasWildcards: false,
+        predicateCount: predicates.length,
+        directiveCount: directives.length,
+        complexity,
       };
     }
+    
+    return this.getEmptyFeatures();
+  }
 
-    const uniqueTypes = Array.from(new Set(matches.map(m => m.type)));
-    const uniqueCaptures = Array.from(new Set(matches.map(m => m.captureName)));
-    const totalTextLength = matches.reduce((sum, m) => sum + m.text.length, 0);
-    const averageTextLength = totalTextLength / matches.length;
-
-    const sortedByLength = [...matches].sort((a, b) => b.text.length - a.text.length);
-    const largestMatch = sortedByLength[0] ?? null;
-    const smallestMatch = sortedByLength[sortedByLength.length - 1] ?? null;
-
-    return {
-      totalMatches: matches.length,
-      uniqueTypes,
-      uniqueCaptures,
-      averageTextLength: Math.round(averageTextLength * 100) / 100,
-      largestMatch,
-      smallestMatch,
+  /**
+   * 验证括号匹配
+   */
+  private validateBrackets(query: string): ValidationError[] {
+    const errors: ValidationError[] = [];
+    const stack: string[] = [];
+    const bracketPairs: Record<string, string> = {
+      '(': ')',
+      '[': ']',
+      '{': '}',
     };
+    
+    for (let i = 0; i < query.length; i++) {
+      const char = query[i]!;
+      
+      if (char in bracketPairs) {
+        stack.push(char);
+      } else if (Object.values(bracketPairs).includes(char)) {
+        const lastOpen = stack.pop();
+        if (!lastOpen || bracketPairs[lastOpen as keyof typeof bracketPairs] !== char) {
+          errors.push({
+            type: 'syntax',
+            message: `Unmatched closing bracket '${char}' at position ${i}`,
+            severity: 'error',
+          });
+        }
+      }
+    }
+    
+    // 检查未闭合的括号
+    while (stack.length > 0) {
+      const unclosed = stack.pop()!;
+      errors.push({
+        type: 'syntax',
+        message: `Unclosed bracket '${unclosed}'`,
+        severity: 'error',
+      });
+    }
+    
+    return errors;
+  }
+
+  /**
+   * 验证引号匹配
+   */
+  private validateQuotes(query: string): ValidationError[] {
+    const errors: ValidationError[] = [];
+    let inSingleQuote = false;
+    let inDoubleQuote = false;
+    let escapeNext = false;
+    
+    for (let i = 0; i < query.length; i++) {
+      const char = query[i]!;
+      
+      if (escapeNext) {
+        escapeNext = false;
+        continue;
+      }
+      
+      if (char === '\\') {
+        escapeNext = true;
+        continue;
+      }
+      
+      if (char === "'" && !inDoubleQuote) {
+        inSingleQuote = !inSingleQuote;
+      } else if (char === '"' && !inSingleQuote) {
+        inDoubleQuote = !inDoubleQuote;
+      }
+    }
+    
+    if (inSingleQuote) {
+      errors.push({
+        type: 'syntax',
+        message: 'Unclosed single quote',
+        severity: 'error',
+      });
+    }
+    
+    if (inDoubleQuote) {
+      errors.push({
+        type: 'syntax',
+        message: 'Unclosed double quote',
+        severity: 'error',
+      });
+    }
+    
+    return errors;
+  }
+
+  /**
+   * 验证模式语法
+   */
+  private validatePatterns(query: string): ValidationError[] {
+    const errors: ValidationError[] = [];
+    
+    // 检查无效的节点类型
+    const invalidNodePattern = /\([^)]*[^a-zA-Z_][^)]*\)/g;
+    let match;
+    
+    while ((match = invalidNodePattern.exec(query)) !== null) {
+      const pattern = match[0];
+      if (!pattern.includes('@') && !pattern.includes('_') && !/^[a-zA-Z_]/.test(pattern.substring(1))) {
+        errors.push({
+          type: 'syntax',
+          message: `Invalid node pattern: ${pattern}`,
+          severity: 'error',
+        });
+      }
+    }
+    
+    // 检查无效的捕获名称
+    const invalidCapturePattern = /@([^a-zA-Z_]\w*)/g;
+    
+    while ((match = invalidCapturePattern.exec(query)) !== null) {
+      errors.push({
+        type: 'syntax',
+        message: `Invalid capture name: @${match[1]}`,
+        severity: 'error',
+      });
+    }
+    
+    return errors;
+  }
+
+  /**
+   * 检查性能问题
+   */
+  private checkPerformanceIssues(query: string): ValidationWarning[] {
+    const warnings: ValidationWarning[] = [];
+    
+    // 检查过多的通配符
+    const wildcardCount = (query.match(/\(_\)/g) || []).length;
+    if (wildcardCount > 5) {
+      warnings.push({
+        type: 'performance',
+        message: `Too many wildcards (${wildcardCount}). This may impact performance.`,
+        suggestion: 'Consider using more specific patterns instead of wildcards.',
+      });
+    }
+    
+    // 检查复杂的交替模式
+    const alternationCount = (query.match(/\[[^\]]*\]/g) || []).length;
+    if (alternationCount > 3) {
+      warnings.push({
+        type: 'performance',
+        message: `Complex alternation patterns detected (${alternationCount}). This may impact performance.`,
+        suggestion: 'Consider simplifying alternation patterns or using multiple queries.',
+      });
+    }
+    
+    // 检查嵌套的量词
+    const nestedQuantifiers = query.match(/([+*?]\s*){2,}/g);
+    if (nestedQuantifiers) {
+      warnings.push({
+        type: 'performance',
+        message: 'Nested quantifiers detected. This may cause exponential performance degradation.',
+        suggestion: 'Avoid nested quantifiers and consider restructuring the query.',
+      });
+    }
+    
+    return warnings;
+  }
+
+  /**
+   * 生成建议
+   */
+  private generateSuggestions(
+    errors: ValidationError[],
+    warnings: ValidationWarning[],
+    features: QueryFeatures
+  ): string[] {
+    const suggestions: string[] = [];
+    
+    if (errors.length > 0) {
+      suggestions.push('Fix syntax errors before proceeding');
+    }
+    
+    if (warnings.length > 0) {
+      suggestions.push('Consider addressing performance warnings for better query performance');
+    }
+    
+    if (features.complexity === 'complex') {
+      suggestions.push('Consider breaking down complex queries into simpler ones');
+    }
+    
+    if (features.predicateCount === 0 && features.directiveCount === 0) {
+      suggestions.push('Consider using predicates or directives for more precise query results');
+    }
+    
+    return suggestions;
+  }
+
+  /**
+   * 获取空特性对象
+   */
+  private getEmptyFeatures(): QueryFeatures {
+    return {
+      hasPredicates: false,
+      hasDirectives: false,
+      hasAnchors: false,
+      hasAlternations: false,
+      hasQuantifiers: false,
+      hasWildcards: false,
+      predicateCount: 0,
+      directiveCount: 0,
+      complexity: 'simple',
+    };
+  }
+
+  /**
+   * 生成谓词优化建议
+   */
+  private suggestPredicateOptimizations(predicates: QueryPredicate[]): OptimizationSuggestion[] {
+    const suggestions: OptimizationSuggestion[] = [];
+
+    // 检查可以合并的eq谓词
+    const eqPredicates = predicates.filter(p => p.type === 'eq' && !p.negate);
+    if (eqPredicates.length > 2) {
+      suggestions.push({
+        type: 'predicate',
+        description: 'Consider using #any-of? predicate instead of multiple #eq? predicates',
+        impact: 'medium',
+        example: 'Replace multiple "#eq? @capture "value"" with "#any-of? @capture ["value1", "value2"]"',
+      });
+    }
+
+    // 检查复杂的正则表达式
+    for (const predicate of predicates) {
+      if ((predicate.type === 'match' || predicate.type === 'not-match') && typeof predicate.value === 'string') {
+        const regexComplexity = this.analyzeRegexComplexity(predicate.value);
+        if (regexComplexity > 5) {
+          suggestions.push({
+            type: 'predicate',
+            description: `Complex regex pattern in predicate '${predicate.type}' may impact performance`,
+            impact: 'medium',
+            example: 'Consider simplifying the regex or using string comparison',
+          });
+        }
+      }
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * 生成指令优化建议
+   */
+  private suggestDirectiveOptimizations(directives: QueryDirective[]): OptimizationSuggestion[] {
+    const suggestions: OptimizationSuggestion[] = [];
+
+    // 检查重复的strip指令
+    const stripDirectives = directives.filter(d => d.type === 'strip');
+    const stripCaptures = new Map<string, number>();
+
+    for (const directive of stripDirectives) {
+      if (directive.capture) {
+        const count = stripCaptures.get(directive.capture) || 0;
+        stripCaptures.set(directive.capture, count + 1);
+      }
+    }
+
+    for (const [capture, count] of stripCaptures.entries()) {
+      if (count > 1) {
+        suggestions.push({
+          type: 'directive',
+          description: `Multiple strip directives for capture '${capture}' can be combined`,
+          impact: 'low',
+          example: 'Combine multiple strip patterns into a single regex with alternation',
+        });
+      }
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * 生成模式优化建议
+   */
+  private suggestPatternOptimizations(parsedQuery: ParsedQuery): OptimizationSuggestion[] {
+    const suggestions: OptimizationSuggestion[] = [];
+
+    // 检查通配符使用
+    const wildcardCount = (parsedQuery.originalQuery.match(/\(_\)/g) || []).length;
+    if (wildcardCount > 3) {
+      suggestions.push({
+        type: 'structure',
+        description: 'Consider replacing wildcards with specific node types',
+        impact: 'high',
+        example: 'Replace "(_)" with "(identifier)" or other specific types',
+      });
+    }
+
+    // 检查交替模式
+    const alternationCount = (parsedQuery.originalQuery.match(/\[[^\]]*\]/g) || []).length;
+    if (alternationCount > 2) {
+      suggestions.push({
+        type: 'structure',
+        description: 'Multiple alternation patterns may impact performance',
+        impact: 'medium',
+        example: 'Consider using separate queries or simplifying alternation patterns',
+      });
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * 生成结构优化建议
+   */
+  private suggestStructureOptimizations(parsedQuery: ParsedQuery): OptimizationSuggestion[] {
+    const suggestions: OptimizationSuggestion[] = [];
+
+    // 检查嵌套量词
+    const nestedQuantifiers = parsedQuery.originalQuery.match(/([+*?]\s*){2,}/g);
+    if (nestedQuantifiers) {
+      suggestions.push({
+        type: 'structure',
+        description: 'Nested quantifiers can cause exponential performance degradation',
+        impact: 'high',
+        example: 'Avoid patterns like "*+" and consider restructuring the query',
+      });
+    }
+
+    // 检查查询复杂度
+    if (parsedQuery.features.complexity === 'complex') {
+      suggestions.push({
+        type: 'structure',
+        description: 'Complex query may benefit from being split into simpler queries',
+        impact: 'medium',
+        example: 'Consider breaking down complex queries into multiple simpler ones',
+      });
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * 分析正则表达式复杂度
+   */
+  private analyzeRegexComplexity(pattern: string): number {
+    let complexity = 0;
+
+    // 基础复杂度
+    complexity += pattern.length * 0.1;
+
+    // 特殊字符增加复杂度
+    const specialChars = pattern.match(/[.*+?^${}()|[\]\\]/g);
+    if (specialChars) {
+      complexity += specialChars.length * 0.5;
+    }
+
+    // 量词增加复杂度
+    const quantifiers = pattern.match(/[+*?]/g);
+    if (quantifiers) {
+      complexity += quantifiers.length * 0.3;
+    }
+
+    // 字符类增加复杂度
+    const charClasses = pattern.match(/\[.*?\]/g);
+    if (charClasses) {
+      complexity += charClasses.length * 0.5;
+    }
+
+    // 分组增加复杂度
+    const groups = pattern.match(/\(.*?\)/g);
+    if (groups) {
+      complexity += groups.length * 0.3;
+    }
+
+    return complexity;
+  }
+
+  /**
+   * 验证查询结构
+   */
+  public validateQueryStructure(query: string): StructureValidationResult {
+    const issues: any[] = [];
+    
+    try {
+      const parsedQuery = this.parseQuery(query);
+      
+      // 检查谓词数量
+      if (!queryConfig.isPredicateCountValid(parsedQuery.predicates.length)) {
+        issues.push({
+          type: 'structure',
+          message: `Too many predicates (${parsedQuery.predicates.length}). Maximum allowed is ${queryConfig.getConfig().maxPredicatesPerQuery}`,
+          severity: 'error',
+        });
+      }
+      
+      // 检查指令数量
+      if (!queryConfig.isDirectiveCountValid(parsedQuery.directives.length)) {
+        issues.push({
+          type: 'structure',
+          message: `Too many directives (${parsedQuery.directives.length}). Maximum allowed is ${queryConfig.getConfig().maxDirectivesPerQuery}`,
+          severity: 'error',
+        });
+      }
+      
+      // 检查基本语法
+      if (!query.trim()) {
+        issues.push({
+          type: 'syntax',
+          message: 'Query cannot be empty',
+          severity: 'error',
+        });
+      }
+      
+      return {
+        isValid: issues.length === 0,
+        patterns: parsedQuery.patterns,
+        issues,
+      };
+    } catch (error) {
+      issues.push({
+        type: 'syntax',
+        message: `Failed to parse query: ${error instanceof Error ? error.message : String(error)}`,
+        severity: 'error',
+      });
+      
+      return {
+        isValid: false,
+        patterns: [],
+        issues,
+      };
+    }
+  }
+
+  /**
+   * 重置处理器状态
+   */
+  public reset(): void {
+    this.predicateRegex.lastIndex = 0;
+    this.directiveRegex.lastIndex = 0;
+    this.anchorRegex.lastIndex = 0;
+    this.alternationRegex.lastIndex = 0;
+    this.quantifierRegex.lastIndex = 0;
+    this.wildcardRegex.lastIndex = 0;
   }
 }
