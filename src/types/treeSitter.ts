@@ -8,6 +8,7 @@ import { MatchResult } from './api';
 export type SupportedLanguage =
   | 'javascript'
   | 'typescript'
+  | 'tsx'
   | 'python'
   | 'java'
   | 'go'

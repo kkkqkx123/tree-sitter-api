@@ -172,13 +172,13 @@ export class QueryValidator {
     };
     
     for (let i = 0; i < query.length; i++) {
-      const char = query[i];
+      const char = query[i]!;
       
-      if (bracketPairs[char]) {
+      if (char in bracketPairs) {
         stack.push(char);
       } else if (Object.values(bracketPairs).includes(char)) {
         const lastOpen = stack.pop();
-        if (!lastOpen || bracketPairs[lastOpen] !== char) {
+        if (!lastOpen || bracketPairs[lastOpen as keyof typeof bracketPairs] !== char) {
           errors.push({
             type: 'syntax',
             message: `Unmatched closing bracket '${char}' at position ${i}`,
@@ -211,7 +211,7 @@ export class QueryValidator {
     let escapeNext = false;
     
     for (let i = 0; i < query.length; i++) {
-      const char = query[i];
+      const char = query[i]!;
       
       if (escapeNext) {
         escapeNext = false;
@@ -382,7 +382,7 @@ export class QueryValidator {
       const args = match[3];
       
       let negate = false;
-      let quantifier: 'any' | 'all' | undefined;
+      let quantifier: 'any' | 'all' = 'all';
       
       if (modifier === 'not') {
         negate = true;
@@ -460,7 +460,7 @@ export class QueryValidator {
    */
   private extractCaptureFromMatch(match: string): string {
     const captureMatch = match.match(/@(\w+)/);
-    return captureMatch ? captureMatch[1] : '';
+    return captureMatch && captureMatch[1] ? captureMatch[1] : '';
   }
 
   /**
@@ -654,13 +654,14 @@ export class QueryValidator {
     const stripCaptures = new Map<string, number>();
     
     for (const directive of stripDirectives) {
-      const count = stripCaptures.get(directive.capture) || 0;
-      stripCaptures.set(directive.capture, count + 1);
+      const captureKey = directive.capture || '';
+      const count = stripCaptures.get(captureKey) || 0;
+      stripCaptures.set(captureKey, count + 1);
       
       if (count > 0) {
         errors.push({
           type: 'directive',
-          message: `Multiple 'strip' directives for capture '${directive.capture}' may have unexpected results`,
+          message: `Multiple 'strip' directives for capture '${captureKey}' may have unexpected results`,
           severity: 'warning',
         });
       }

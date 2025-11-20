@@ -12,13 +12,18 @@ export enum ErrorType {
   MEMORY_ERROR = 'MEMORY_ERROR',
   UNSUPPORTED_LANGUAGE = 'UNSUPPORTED_LANGUAGE',
   INTERNAL_ERROR = 'INTERNAL_ERROR',
-  
+
   // 高级查询相关错误
   QUERY_SYNTAX_ERROR = 'QUERY_SYNTAX_ERROR',
   PREDICATE_ERROR = 'PREDICATE_ERROR',
   DIRECTIVE_ERROR = 'DIRECTIVE_ERROR',
   QUERY_OPTIMIZATION_ERROR = 'QUERY_OPTIMIZATION_ERROR',
   QUERY_CACHE_ERROR = 'QUERY_CACHE_ERROR',
+  RESOURCE_ERROR = "RESOURCE_ERROR",
+  
+  // 额外错误类型
+  QUERY_ERROR = 'QUERY_ERROR',
+  TIMEOUT_ERROR = 'TIMEOUT_ERROR',
 }
 
 // 错误严重程度
@@ -31,6 +36,7 @@ export enum ErrorSeverity {
 
 // 清理结果类型
 export interface CleanupResult {
+  strategy?: string;
   memoryFreed: number;
   duration: number;
   success: boolean;
@@ -41,7 +47,7 @@ export class TreeSitterError extends Error {
   public readonly type: ErrorType;
   public readonly severity: ErrorSeverity;
   public readonly timestamp: Date;
-  public readonly context?: Record<string, any>;
+  public readonly context?: Record<string, any> | undefined;
 
   constructor(
     type: ErrorType,
@@ -54,7 +60,7 @@ export class TreeSitterError extends Error {
     this.type = type;
     this.severity = severity;
     this.timestamp = new Date();
-    this.context = context || undefined;
+    this.context = context;
 
     // 确保错误堆栈正确
     if (Error.captureStackTrace) {
@@ -80,8 +86,8 @@ export class TreeSitterError extends Error {
       severity: this.severity,
       message: this.message,
       timestamp: this.timestamp.toISOString(),
-      context: this.context,
-      stack: this.stack,
+      ...(this.context !== undefined && { context: this.context }),
+      ...(this.stack !== undefined && { stack: this.stack }),
     };
   }
 
@@ -164,14 +170,14 @@ export class QuerySyntaxError extends TreeSitterError {
 
     const lines = this.query.split('\n');
     const errorLine = lines[this.position.row];
-    
+
     if (!errorLine) {
       return '';
     }
 
     const start = Math.max(0, this.position.column - 20);
     const end = Math.min(errorLine.length, this.position.column + 20);
-    
+
     return `...${errorLine.substring(start, end)}...`;
   }
 }
@@ -577,6 +583,67 @@ export class ErrorFactory {
   }
 }
 
+// 内存状态接口
+export interface MemoryStatus {
+  rss: number;
+  heapTotal: number;
+  heapUsed: number;
+  external: number;
+  status: 'healthy' | 'warning' | 'critical';
+  level: 'healthy' | 'warning' | 'critical';
+  threshold: number;
+  usage: number;
+}
+
+// 错误详情接口
+export interface ErrorDetails {
+  type: ErrorType;
+  severity: ErrorSeverity;
+  message: string;
+  context?: Record<string, any>;
+  timestamp: Date;
+  stack?: string;
+}
+
+// 错误记录接口
+export interface ErrorRecord {
+  id: string;
+  error: ErrorDetails;
+  count: number;
+  firstOccurrence: Date;
+  lastOccurrence: Date;
+  resolved: boolean;
+}
+
+// 错误统计接口
+export interface ErrorStatistics {
+  totalErrors: number;
+  errorsByType: Record<ErrorType, number>;
+  errorsBySeverity: Record<ErrorSeverity, number>;
+  recentErrors: ErrorRecord[];
+  errorRate: number;
+  averageResolutionTime: number;
+}
+
+// 恢复结果接口
+export interface RecoveryResult {
+  success: boolean;
+  strategy: string;
+  duration: number;
+  memoryFreed?: number;
+  error?: string;
+}
+
+// 健康状态接口
+export interface HealthStatus {
+  status: 'healthy' | 'warning' | 'error';
+  memory: MemoryStatus;
+  parserPool: any;
+  languageManager: any;
+  service: any;
+  timestamp: string;
+}
+
 // 错误处理工具函数
 export class ErrorUtils {
   /**
@@ -584,7 +651,7 @@ export class ErrorUtils {
    */
   static isRetryable(error: TreeSitterError): boolean {
     return error.type === ErrorType.MEMORY_ERROR ||
-           error.type === ErrorType.QUERY_CACHE_ERROR;
+      error.type === ErrorType.QUERY_CACHE_ERROR;
   }
 
   /**
@@ -592,10 +659,10 @@ export class ErrorUtils {
    */
   static isUserError(error: TreeSitterError): boolean {
     return error.type === ErrorType.VALIDATION_ERROR ||
-           error.type === ErrorType.QUERY_SYNTAX_ERROR ||
-           error.type === ErrorType.PREDICATE_ERROR ||
-           error.type === ErrorType.DIRECTIVE_ERROR ||
-           error.type === ErrorType.UNSUPPORTED_LANGUAGE;
+      error.type === ErrorType.QUERY_SYNTAX_ERROR ||
+      error.type === ErrorType.PREDICATE_ERROR ||
+      error.type === ErrorType.DIRECTIVE_ERROR ||
+      error.type === ErrorType.UNSUPPORTED_LANGUAGE;
   }
 
   /**
@@ -604,9 +671,9 @@ export class ErrorUtils {
   static getRetryDelay(error: TreeSitterError, attempt: number): number {
     const baseDelay = 1000; // 1秒
     const maxDelay = 30000;  // 30秒
-    
+
     let delay = baseDelay * Math.pow(2, attempt - 1); // 指数退避
-    
+
     // 根据错误类型调整延迟
     switch (error.type) {
       case ErrorType.MEMORY_ERROR:
@@ -616,7 +683,7 @@ export class ErrorUtils {
         delay *= 0.5; // 缓存错误可以快速重试
         break;
     }
-    
+
     return Math.min(delay, maxDelay);
   }
 
@@ -626,7 +693,7 @@ export class ErrorUtils {
   static formatErrorMessage(error: TreeSitterError): string {
     const userMessage = error.getUserFriendlyMessage();
     const details = this.getErrorDetails(error);
-    
+
     return details ? `${userMessage}: ${details}` : userMessage;
   }
 
@@ -655,7 +722,7 @@ export class ErrorUtils {
     if (error instanceof UnsupportedLanguageError) {
       return error.getLanguageDetails();
     }
-    
+
     return '';
   }
 }

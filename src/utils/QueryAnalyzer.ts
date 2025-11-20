@@ -349,7 +349,7 @@ export class QueryAnalyzer {
 
       // 分析复杂度
       const features = this.analyzeQueryFeatures(query);
-      stats.queryComplexityDistribution[features.complexity]++;
+      stats.queryComplexityDistribution[features.complexity]! += 1;
     }
 
     return stats;

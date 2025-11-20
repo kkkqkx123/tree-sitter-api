@@ -80,8 +80,8 @@ describe('globalErrorHandler 中间件', () => {
 
       const recoveryResult = {
         success: true,
-        action: 'test_action',
-        message: 'Recovery successful',
+        strategy: 'test_strategy',
+        duration: 100,
       };
 
       mockErrorHandler.handleError.mockReturnValue(treeSitterError);
@@ -113,8 +113,8 @@ describe('globalErrorHandler 中间件', () => {
         requestId: 'test-request-id',
         recovery: {
           attempted: true,
-          action: 'test_action',
-          message: 'Recovery successful',
+          strategy: 'test_strategy',
+          duration: 100,
         },
       });
     });
@@ -129,8 +129,8 @@ describe('globalErrorHandler 中间件', () => {
 
       const recoveryResult = {
         success: false,
-        action: 'test_action',
-        message: 'Recovery failed',
+        strategy: 'test_strategy',
+        duration: 100,
       };
 
       mockErrorHandler.handleError.mockReturnValue(treeSitterError);
@@ -176,8 +176,8 @@ describe('globalErrorHandler 中间件', () => {
 
       const recoveryResult = {
         success: true,
-        action: 'test_action',
-        message: 'Recovery successful',
+        strategy: 'test_strategy',
+        duration: 100,
       };
 
       mockErrorHandler.handleError.mockReturnValue(treeSitterError);
@@ -201,8 +201,8 @@ describe('globalErrorHandler 中间件', () => {
         requestId: 'test-request-id',
         recovery: {
           attempted: true,
-          action: 'test_action',
-          message: 'Recovery successful',
+          strategy: 'test_strategy',
+          duration: 100,
         },
         details: { detail: 'Additional error detail' },
         stack: expect.any(String),
@@ -227,8 +227,8 @@ describe('globalErrorHandler 中间件', () => {
 
       const recoveryResult = {
         success: true,
-        action: 'test_action',
-        message: 'Recovery successful',
+        strategy: 'test_strategy',
+        duration: 100,
       };
 
       mockErrorHandler.handleError.mockReturnValue(treeSitterError);
@@ -252,8 +252,8 @@ describe('globalErrorHandler 中间件', () => {
         requestId: expect.stringMatching(/^req_\d+_[a-z0-9]+$/),
         recovery: {
           attempted: true,
-          action: 'test_action',
-          message: 'Recovery successful',
+          strategy: 'test_strategy',
+          duration: 100,
         },
       });
     });
@@ -281,8 +281,8 @@ describe('globalErrorHandler 中间件', () => {
 
         const recoveryResult = {
           success: true,
-          action: 'test_action',
-          message: 'Recovery successful',
+          strategy: 'test_strategy',
+          duration: 100,
         };
 
         mockErrorHandler.handleError.mockReturnValue(treeSitterError);
@@ -293,7 +293,11 @@ describe('globalErrorHandler 中间件', () => {
 
         // 重新设置mock
         mockErrorHandler.handleError.mockReturnValue(treeSitterError);
-        mockRecoveryStrategy.attemptRecovery.mockResolvedValue(recoveryResult);
+        mockRecoveryStrategy.attemptRecovery.mockResolvedValue({
+          success: true,
+          strategy: 'test_strategy',
+          duration: 100,
+        });
 
         // 执行测试
         await middleware(
@@ -305,11 +309,11 @@ describe('globalErrorHandler 中间件', () => {
 
         // 验证结果
         expect(mockResponse.status).toHaveBeenCalledWith(expectedStatus);
-      }
-    });
-  });
+        }
+        });
+        });
 
-  describe('asyncErrorHandler', () => {
+        describe('asyncErrorHandler', () => {
     it('应该捕获异步函数中的错误', async () => {
       // 准备测试数据
       const asyncFunction = jest

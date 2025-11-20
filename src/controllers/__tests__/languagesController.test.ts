@@ -348,6 +348,7 @@ describe('languagesController', () => {
       const mockSupportedLanguages: SupportedLanguage[] = [
         'javascript',
         'typescript',
+        'tsx',
         'python',
       ];
       const languagesToPreload: SupportedLanguage[] = [

@@ -23,11 +23,11 @@ export class QueryCache {
     const config = queryConfig.getCacheConfig();
     this.maxSize = config.size;
     this.timeout = config.timeout;
-    
+
     if (config.enabled) {
       this.startCleanupInterval();
     }
-    
+
     log.debug('QueryCache', `Initialized with max size: ${this.maxSize}, timeout: ${this.timeout}ms`);
   }
 
@@ -36,25 +36,25 @@ export class QueryCache {
    */
   public get(key: string): ParsedQuery | null {
     const entry = this.cache.get(key);
-    
+
     if (!entry) {
       log.debug('QueryCache', `Cache miss for key: ${key}`);
       return null;
     }
-    
+
     // 检查是否过期
     if (this.isExpired(entry)) {
       this.cache.delete(key);
       log.debug('QueryCache', `Cache entry expired for key: ${key}`);
       return null;
     }
-    
+
     // 更新访问信息
     entry.accessCount++;
     entry.lastAccessed = Date.now();
-    
+
     log.debug('QueryCache', `Cache hit for key: ${key} (access count: ${entry.accessCount})`);
-    
+
     return entry.query;
   }
 
@@ -66,12 +66,12 @@ export class QueryCache {
     if (!queryConfig.getCacheConfig().enabled) {
       return;
     }
-    
+
     // 如果缓存已满，移除最少使用的条目
     if (this.cache.size >= this.maxSize) {
       this.evictLeastUsed();
     }
-    
+
     const now = Date.now();
     const entry: CacheEntry = {
       query,
@@ -79,7 +79,7 @@ export class QueryCache {
       accessCount: 1,
       lastAccessed: now,
     };
-    
+
     this.cache.set(key, entry);
     log.debug('QueryCache', `Cached query for key: ${key}`);
   }
@@ -104,19 +104,18 @@ export class QueryCache {
    * 清理过期条目
    */
   public cleanup(): void {
-    const now = Date.now();
     const keysToDelete: string[] = [];
-    
+
     for (const [key, entry] of this.cache.entries()) {
       if (this.isExpired(entry)) {
         keysToDelete.push(key);
       }
     }
-    
+
     for (const key of keysToDelete) {
       this.cache.delete(key);
     }
-    
+
     if (keysToDelete.length > 0) {
       log.debug('QueryCache', `Cleaned up ${keysToDelete.length} expired cache entries`);
     }
@@ -143,27 +142,27 @@ export class QueryCache {
         mostAccessed: null,
       };
     }
-    
+
     let oldestTimestamp = Date.now();
     let newestTimestamp = 0;
     let mostAccessedKey = '';
     let mostAccessedCount = 0;
     let totalAccessCount = 0;
-    
+
     for (const [key, entry] of this.cache.entries()) {
       oldestTimestamp = Math.min(oldestTimestamp, entry.timestamp);
       newestTimestamp = Math.max(newestTimestamp, entry.timestamp);
       totalAccessCount += entry.accessCount;
-      
+
       if (entry.accessCount > mostAccessedCount) {
         mostAccessedKey = key;
         mostAccessedCount = entry.accessCount;
       }
     }
-    
+
     // 计算命中率（简化版本，实际需要跟踪命中次数）
     const hitRate = totalAccessCount > 0 ? (totalAccessCount - this.cache.size) / totalAccessCount : 0;
-    
+
     return {
       size: this.cache.size,
       maxSize: this.maxSize,
@@ -179,11 +178,11 @@ export class QueryCache {
    */
   public warmup(queries: Array<{ key: string; query: ParsedQuery }>): void {
     log.debug('QueryCache', `Warming up cache with ${queries.length} queries`);
-    
+
     for (const { key, query } of queries) {
       this.set(key, query);
     }
-    
+
     log.debug('QueryCache', `Cache warmup completed, current size: ${this.cache.size}`);
   }
 
@@ -192,7 +191,7 @@ export class QueryCache {
    */
   public export(): Array<{ key: string; query: ParsedQuery; metadata: CacheEntry }> {
     const exportData: Array<{ key: string; query: ParsedQuery; metadata: CacheEntry }> = [];
-    
+
     for (const [key, entry] of this.cache.entries()) {
       exportData.push({
         key,
@@ -200,7 +199,7 @@ export class QueryCache {
         metadata: { ...entry },
       });
     }
-    
+
     return exportData;
   }
 
@@ -209,16 +208,16 @@ export class QueryCache {
    */
   public import(data: Array<{ key: string; query: ParsedQuery; metadata: CacheEntry }>): void {
     this.clear();
-    
-    for (const { key, query, metadata } of data) {
+
+    for (const { key, metadata } of data) {
       // 检查条目是否过期
       if (this.isExpired(metadata)) {
         continue;
       }
-      
+
       this.cache.set(key, metadata);
     }
-    
+
     log.debug('QueryCache', `Imported ${this.cache.size} cache entries`);
   }
 
@@ -230,7 +229,7 @@ export class QueryCache {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
-    
+
     this.clear();
     log.debug('QueryCache', 'Cache destroyed');
   }
@@ -249,16 +248,16 @@ export class QueryCache {
     let leastUsedKey = '';
     let leastAccessCount = Infinity;
     let oldestLastAccessed = Date.now();
-    
+
     for (const [key, entry] of this.cache.entries()) {
-      if (entry.accessCount < leastAccessCount || 
-          (entry.accessCount === leastAccessCount && entry.lastAccessed < oldestLastAccessed)) {
+      if (entry.accessCount < leastAccessCount ||
+        (entry.accessCount === leastAccessCount && entry.lastAccessed < oldestLastAccessed)) {
         leastUsedKey = key;
         leastAccessCount = entry.accessCount;
         oldestLastAccessed = entry.lastAccessed;
       }
     }
-    
+
     if (leastUsedKey) {
       this.cache.delete(leastUsedKey);
       log.debug('QueryCache', `Evicted least used entry: ${leastUsedKey}`);

@@ -23,6 +23,7 @@ export class LanguageManager {
     const languages: SupportedLanguage[] = [
       'javascript',
       'typescript',
+      'tsx',
       'python',
       'java',
       'go',
@@ -99,9 +100,14 @@ export class LanguageManager {
           module = require('tree-sitter-javascript');
           break;
         case 'typescript':
-          // TypeScript需要特殊处理
+          // TypeScript需要特殊处理(ts会导出2个模块)
           const ts = require('tree-sitter-typescript');
           module = ts.typescript;
+          break;
+        case 'tsx':
+          // TSX需要特殊处理
+          const tsx = require('tree-sitter-typescript');
+          module = tsx.tsx;
           break;
         case 'python':
           module = require('tree-sitter-python');

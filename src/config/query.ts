@@ -77,8 +77,8 @@ export class QueryConfigManager {
    * 加载配置
    */
   private loadConfig(): QueryConfig {
-    const environment = process.env.NODE_ENV || 'development';
-    
+    const environment = process.env['NODE_ENV'] || 'development';
+
     switch (environment) {
       case 'production':
         return ProductionQueryConfig;

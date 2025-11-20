@@ -146,7 +146,8 @@ export const resourceGuard = (
           const currentMemoryStatus = memoryMonitor.checkMemory();
           if (
             memoryMonitor.shouldCleanup() ||
-            currentMemoryStatus.level !== 'normal'
+            (currentMemoryStatus.level === 'critical' ||
+              currentMemoryStatus.level === 'warning')
           ) {
             const strategy =
               currentMemoryStatus.level === 'critical'

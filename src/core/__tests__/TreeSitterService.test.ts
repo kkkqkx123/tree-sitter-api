@@ -23,6 +23,7 @@ jest.mock('../LanguageManager', () => {
         'javascript',
         'python',
         'typescript',
+        'tsx',
       ]),
       getStatus: jest.fn(() => ({
         supportedLanguages: ['javascript', 'python', 'typescript'],

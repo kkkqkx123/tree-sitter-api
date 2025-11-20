@@ -84,6 +84,7 @@ export class MemoryMonitor {
   checkMemory(): MemoryStatus {
     const usage = getMemoryUsage();
     const heapUsedMB = Math.round(usage.heapUsed / 1024 / 1024);
+    const heapTotalMB = Math.round(usage.heapTotal / 1024 / 1024);
 
     // 确定内存状态级别
     let level: MemoryStatus['level'];
@@ -92,16 +93,21 @@ export class MemoryMonitor {
     } else if (heapUsedMB >= MemoryConfig.THRESHOLDS.CRITICAL) {
       level = 'warning';
     } else {
-      level = 'normal';
+      level = 'healthy';
     }
+
+    const threshold = MemoryConfig.THRESHOLDS.WARNING;
+    const usage_percentage = Math.round((heapUsedMB / heapTotalMB) * 100);
 
     return {
       level,
+      status: level,
       heapUsed: heapUsedMB,
-      heapTotal: Math.round(usage.heapTotal / 1024 / 1024),
+      heapTotal: heapTotalMB,
       rss: Math.round(usage.rss / 1024 / 1024),
       external: Math.round(usage.external / 1024 / 1024),
-      trend: MemoryTrend.STABLE,
+      threshold,
+      usage: usage_percentage,
     };
   }
 

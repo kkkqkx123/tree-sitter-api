@@ -35,7 +35,7 @@ export interface QueryPredicate {
 // 查询指令接口
 export interface QueryDirective {
   type: DirectiveType;
-  capture: string;
+  capture?: string;
   parameters: any[];
   position?: Position;
 }

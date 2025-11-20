@@ -20,6 +20,7 @@ describe('LanguageManager', () => {
       const supportedLanguages = languageManager.getSupportedLanguages();
       expect(supportedLanguages).toContain('javascript');
       expect(supportedLanguages).toContain('typescript');
+      expect(supportedLanguages).toContain('tsx');
       expect(supportedLanguages).toContain('python');
       expect(supportedLanguages).toContain('java');
       expect(supportedLanguages).toContain('go');
@@ -32,7 +33,7 @@ describe('LanguageManager', () => {
 
     it('should have correct number of supported languages', () => {
       const supportedLanguages = languageManager.getSupportedLanguages();
-      expect(supportedLanguages.length).toBe(10); // 根据初始化列表
+      expect(supportedLanguages.length).toBe(11); // 根据初始化列表
     });
   });
 

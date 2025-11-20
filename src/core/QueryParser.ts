@@ -11,8 +11,8 @@ import {
   StructureValidationResult,
   PredicateType,
   DirectiveType,
-  Position,
 } from '../types/advancedQuery';
+import { Position } from '../types/api';
 import { queryConfig } from '../config/query';
 import { log } from '../utils/Logger';
 
@@ -103,7 +103,9 @@ export class QueryParser {
     let match;
     
     while ((match = captureRegex.exec(pattern)) !== null) {
-      captures.push(match[1]);
+      if (match[1]) {
+        captures.push(match[1]);
+      }
     }
     
     return captures;
@@ -176,22 +178,27 @@ export class QueryParser {
     // 获取位置信息
     const position = this.getPosition(query, match.index);
     
-    return {
+    const predicate: QueryPredicate = {
       type: predicateType,
       capture: this.extractCaptureFromPredicate(fullMatch),
       value,
       negate,
-      quantifier,
       position,
     };
+    
+    if (quantifier) {
+      predicate.quantifier = quantifier;
+    }
+    
+    return predicate;
   }
 
   /**
-   * 从谓词中提取捕获名称
-   */
+    * 从谓词中提取捕获名称
+    */
   private extractCaptureFromPredicate(predicate: string): string {
     const captureMatch = predicate.match(/@(\w+)/);
-    return captureMatch ? captureMatch[1] : '';
+    return captureMatch?.[1] ?? '';
   }
 
   /**
@@ -259,21 +266,22 @@ export class QueryParser {
   }
 
   /**
-   * 从指令中提取捕获名称
-   */
+    * 从指令中提取捕获名称
+    */
   private extractCaptureFromDirective(directive: string): string {
     const captureMatch = directive.match(/@(\w+)/);
-    return captureMatch ? captureMatch[1] : '';
+    return captureMatch?.[1] ?? '';
   }
 
   /**
-   * 获取文本位置
-   */
+    * 获取文本位置
+    */
   private getPosition(text: string, index: number): Position {
     const lines = text.substring(0, index).split('\n');
+    const lastLine = lines[lines.length - 1] ?? '';
     return {
       row: lines.length - 1,
-      column: lines[lines.length - 1].length,
+      column: lastLine.length,
     };
   }
 

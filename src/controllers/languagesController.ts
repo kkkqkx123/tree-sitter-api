@@ -157,7 +157,7 @@ export const createLanguagesController = (service: TreeSitterService) => {
 
       // 预加载语言
       const startTime = Date.now();
-      await service.preloadLanguages(languagesToPreload);
+      await service.preloadLanguages();
       const duration = Date.now() - startTime;
 
       // 构建响应
@@ -277,9 +277,16 @@ function getLanguageDetails(language: SupportedLanguage): any {
     },
     typescript: {
       name: 'TypeScript',
-      extensions: ['.ts', '.tsx'],
+      extensions: ['.ts'],
       mimeType: 'text/typescript',
       description: 'TypeScript programming language',
+      popularity: 'high',
+    },
+    tsx: {
+      name: 'TSX',
+      extensions: ['.tsx'],
+      mimeType: 'text/tsx',
+      description: 'TSX (TypeScript with JSX) programming language',
       popularity: 'high',
     },
     python: {
@@ -395,6 +402,24 @@ function getLanguageQueryExamples(language: SupportedLanguage): any[] {
         description: 'Find all type aliases',
         query:
           '(type_alias_declaration name: (type_identifier) @name) @type_alias',
+      },
+    ],
+    tsx: [
+      {
+        name: 'JSX Elements',
+        description: 'Find all JSX elements',
+        query: '(jsx_element open_tag: (jsx_opening_element name: (identifier) @tag)) @jsx',
+      },
+      {
+        name: 'JSX Self-closing elements',
+        description: 'Find all self-closing JSX elements',
+        query: '(jsx_self_closing_element name: (identifier) @tag) @jsx',
+      },
+      {
+        name: 'Interface declarations',
+        description: 'Find all interface declarations',
+        query:
+          '(interface_declaration name: (type_identifier) @name) @interface',
       },
     ],
     python: [
