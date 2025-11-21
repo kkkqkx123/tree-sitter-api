@@ -81,7 +81,7 @@ Tree-sitter Query REST API 提供了一个基于HTTP的接口，用于批量处�
     {
       "language": "javascript",
       "code": "const x = 1;",
-      "query": "(variable_declarator) @var"
+      "queries": ["(variable_declarator) @var"]
     },
     {
       "language": "python",

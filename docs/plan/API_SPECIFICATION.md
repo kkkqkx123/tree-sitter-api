@@ -47,8 +47,8 @@ interface ErrorResponse {
 {
     "language": "javascript",
     "code": "function hello() { console.log('Hello'); }",
-    "query": "(function_declaration) @func",
     "queries": [
+        "(function_declaration) @func",
         "(identifier) @id",
         "(string_literal) @str"
     ]
@@ -352,7 +352,7 @@ curl -X POST http://localhost:3000/api/parse \
   -d '{
     "language": "javascript",
     "code": "const x = 42;",
-    "query": "(variable_declaration) @var"
+    "queries": ["(variable_declaration) @var"]
   }'
 
 # 获取健康状态

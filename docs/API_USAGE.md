@@ -26,7 +26,7 @@ curl -X POST http://localhost:4001/api/parse \
   -d '{
     "language": "javascript",
     "code": "function hello() { console.log(\"Hello\"); }",
-    "query": "(function_declaration) @func"
+    "queries": ["(function_declaration) @func"]
   }'
 
 # 获取健康状态
@@ -49,8 +49,8 @@ curl http://localhost:4001/api/languages
 {
   "language": "javascript",
   "code": "function hello() { console.log('Hello'); }",
-  "query": "(function_declaration) @func",
   "queries": [
+    "(function_declaration) @func",
     "(identifier) @id",
     "(string_literal) @str"
   ]
@@ -91,12 +91,12 @@ curl http://localhost:4001/api/languages
     {
       "language": "javascript",
       "code": "function hello() { console.log('Hello'); }",
-      "query": "(function_declaration) @func"
+      "queries": ["(function_declaration) @func"]
     },
     {
       "language": "python",
       "code": "def hello():\n    print('Hello')",
-      "query": "(function_definition) @func"
+      "queries": ["(function_definition) @func"]
     }
   ]
 }
@@ -620,7 +620,7 @@ async function parseCode() {
     body: JSON.stringify({
       language: 'javascript',
       code: 'function add(a, b) { return a + b; }',
-      query: '(function_declaration) @func'
+      queries: ['(function_declaration) @func']
     })
   });
 
@@ -645,7 +645,7 @@ def parse_code():
     data = {
         'language': 'python',
         'code': 'def hello():\n    print("Hello, World!")',
-        'query': '(function_definition) @func'
+        'queries': ['(function_definition) @func']
     }
     
     response = requests.post(url, json=data)

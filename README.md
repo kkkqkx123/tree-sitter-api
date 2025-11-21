@@ -66,7 +66,7 @@ Content-Type: application/json
 {
   "language": "javascript",
   "code": "function hello() { console.log('Hello'); }",
-  "query": "(function_declaration) @func"
+  "queries": ["(function_declaration) @func"]
 }
 ```
 

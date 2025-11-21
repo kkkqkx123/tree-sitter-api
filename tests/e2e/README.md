@@ -28,8 +28,8 @@ tests/
 {
   "language": "javascript",  // 编程语言标识符
   "code": "function hello() { ... }",  // 要解析的代码
-  "query": "(function_declaration) @func",  // 单个查询（可选）
-  "queries": [  // 多个查询数组（可选）
+  "queries": [  // 查询数组（必需，至少一个查询）
+    "(function_declaration) @func",
     "(class_declaration) @class",
     "(call_expression) @call"
   ]
@@ -86,8 +86,10 @@ E2E测试会自动将所有API响应保存到JSON文件中，包括：
       "requestData": {
         "language": "javascript",
         "code": "function hello() { ... }",
-        "query": "(function_declaration) @func",
-        "queries": ["(class_declaration) @class"]
+        "queries": [
+          "(function_declaration) @func",
+          "(class_declaration) @class"
+        ]
       },
       "responseData": {
         "success": true,

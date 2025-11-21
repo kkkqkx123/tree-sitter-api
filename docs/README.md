@@ -45,35 +45,21 @@ Tree-sitter Query REST API 提供了一个基于HTTP的接口，用于批量处�
 
 **POST /api/parse**
 
-批量处理代码语法分析和Tree-sitter查询。
+解析代码并执行Tree-sitter查询。
 
 **请求体:**
 ```json
 {
-  "requests": [
-    {
-      "language": "cpp",
-      "code": "int main() { return 0; }",
-      "query": "(function_definition) @func"
-    },
-    {
-      "language": "python",
-      "code": "def hello():\n    print('Hello')",
-      "queries": [
-        "(function_definition) @func",
-        "(call function: (identifier) @func_name)"
-      ]
-    }
-  ]
+  "language": "javascript",
+  "code": "function hello() { console.log('Hello'); }",
+  "queries": ["(function_declaration) @func"]
 }
 ```
 
 **字段说明:**
-- `requests`: 请求数组，每个元素包含:
-  - `language`: 编程语言标识符（必需）
-  - `code`: 要分析的代码字符串（必需）
-  - `query`: 单个Tree-sitter查询规则（可选）
-  - `queries`: 多个Tree-sitter查询规则数组（可选）
+- `language`: 编程语言标识符（必需）
+- `code`: 要分析的代码字符串（必需）
+- `queries`: Tree-sitter查询规则数组，至少一个查询（必需）
 
 **响应:**
 ```json
@@ -149,13 +135,9 @@ Tree-sitter Query REST API 提供了一个基于HTTP的接口，用于批量处�
 curl -X POST http://localhost:3000/api/parse \
   -H "Content-Type: application/json" \
   -d '{
-    "requests": [
-      {
-        "language": "javascript",
-        "code": "function test() { return 42; }",
-        "query": "(function_declaration) @func"
-      }
-    ]
+    "language": "javascript",
+    "code": "function test() { return 42; }",
+    "queries": ["(function_declaration) @func"]
   }'
 ```
 
@@ -164,16 +146,12 @@ curl -X POST http://localhost:3000/api/parse \
 curl -X POST http://localhost:3000/api/parse \
   -H "Content-Type: application/json" \
   -d '{
-    "requests": [
-      {
-        "language": "python",
-        "code": "def calculate():\n    result = 10 + 20\n    return result",
-        "queries": [
-          "(function_definition) @func",
-          "(assignment target: (identifier) @var)",
-          "(return_statement value: (identifier) @return_var)"
-        ]
-      }
+    "language": "python",
+    "code": "def calculate():\n    result = 10 + 20\n    return result",
+    "queries": [
+      "(function_definition) @func",
+      "(assignment target: (identifier) @var)",
+      "(return_statement value: (identifier) @return_var)"
     ]
   }'
 ```
