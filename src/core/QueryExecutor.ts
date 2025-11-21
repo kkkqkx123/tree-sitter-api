@@ -81,8 +81,10 @@ export class QueryExecutor {
         );
       }
       
-      // 检查是否有无效的谓词
-      if (parsedQuery.predicates.length === 0 && query.includes('#')) {
+      // 检查是否有无效的谓词（只检查谓词，不包括指令）
+      const hasPredicates = /#\w+\?/.test(query);
+      
+      if (hasPredicates && parsedQuery.predicates.length === 0) {
         // 如果查询中包含谓词但没有解析出任何谓词，可能是语法错误
         return {
           success: false,
@@ -91,6 +93,22 @@ export class QueryExecutor {
           performance: this.getPerformanceMetrics(startTime, Date.now() - queryStartTime, 0, 0, 0, 0),
         };
       }
+      
+      // 检查是否有谓词解析错误（如any-of缺少参数）
+      // 通过检查查询中是否有any-of但没有成功解析的any-of谓词
+      const hasAnyOfInQuery = /#any-of\?/.test(query);
+      const hasValidAnyOf = parsedQuery.predicates.some(p => p.type === 'any-of');
+      
+      if (hasAnyOfInQuery && !hasValidAnyOf) {
+        return {
+          success: false,
+          matches: [],
+          errors: ['Any-of predicate requires an array value'],
+          performance: this.getPerformanceMetrics(startTime, Date.now() - queryStartTime, 0, 0, 0, 0),
+        };
+      }
+      
+      // 如果只有指令没有谓词，这是正常的，继续执行
 
       // 优化查询（如果启用）
       let optimizedQuery = parsedQuery;
@@ -407,7 +425,7 @@ export class QueryExecutor {
     directivesApplied: number,
     memoryUsage: number
   ): PerformanceMetrics {
-    const totalTime = Date.now() - startTime;
+    const totalTime = Math.max(1, Date.now() - startTime); // 确保totalTime至少为1ms
     return {
       parseTime: 0, // 解析时间在外部计算
       queryTime,

@@ -1,6 +1,6 @@
 {
   "testSuite": "Tree-sitter API E2E Tests",
-  "timestamp": "2025-11-18T13:26:16.739Z",
+  "timestamp": "2025-11-21T07:01:01.832Z",
   "totalTests": 7,
   "results": [
     {
@@ -8,8 +8,8 @@
       "requestData": {
         "language": "javascript",
         "code": "function hello() { console.log('Hello, World!'); }\nclass MyClass {\n  constructor() {\n    this.value = 42;\n  }\n\n  getValue() {\n    return this.value;\n  }\n}",
-        "query": "(function_declaration) @func",
         "queries": [
+          "(function_declaration) @func",
           "(class_declaration) @class",
           "(call_expression) @call"
         ]
@@ -58,19 +58,19 @@
           }
         ],
         "errors": [],
-        "timestamp": "2025-11-18T13:26:14.478Z"
+        "timestamp": "2025-11-21T07:00:59.551Z"
       },
       "statusCode": 200,
-      "duration": 108,
-      "timestamp": "2025-11-18T13:26:14.489Z"
+      "duration": 134,
+      "timestamp": "2025-11-21T07:00:59.558Z"
     },
     {
       "testName": "Python代码解析测试",
       "requestData": {
         "language": "python",
         "code": "def hello():\n    print('Hello, World!')\n\nclass MyClass:\n    def __init__(self):\n        self.value = 42\n\n    def get_value(self):\n        return self.value",
-        "query": "(function_definition) @func",
         "queries": [
+          "(function_definition) @func",
           "(class_definition) @class",
           "(call) @call"
         ]
@@ -145,19 +145,19 @@
           }
         ],
         "errors": [],
-        "timestamp": "2025-11-18T13:26:14.535Z"
+        "timestamp": "2025-11-21T07:00:59.630Z"
       },
       "statusCode": 200,
-      "duration": 46,
-      "timestamp": "2025-11-18T13:26:14.540Z"
+      "duration": 70,
+      "timestamp": "2025-11-21T07:00:59.633Z"
     },
     {
       "testName": "Java代码解析测试",
       "requestData": {
         "language": "java",
         "code": "public class HelloWorld {\n    public static void main(String[] args) {\n        System.out.println(\"Hello, World!\");\n    }\n\n    public int getValue() {\n        return 42;\n    }\n}",
-        "query": "(method_declaration) @method",
         "queries": [
+          "(method_declaration) @method",
           "(class_declaration) @class",
           "(method_invocation) @call"
         ]
@@ -219,30 +219,31 @@
           }
         ],
         "errors": [],
-        "timestamp": "2025-11-18T13:26:14.583Z"
+        "timestamp": "2025-11-21T07:00:59.686Z"
       },
       "statusCode": 200,
-      "duration": 45,
-      "timestamp": "2025-11-18T13:26:14.587Z"
+      "duration": 54,
+      "timestamp": "2025-11-21T07:00:59.688Z"
     },
     {
       "testName": "不支持语言错误处理测试",
       "requestData": {
         "language": "invalid_language",
         "code": "function hello() { console.log('Hello, World!'); }",
-        "query": "(function_declaration) @func"
+        "queries": [
+          "(function_declaration) @func"
+        ]
       },
       "responseData": {
         "success": false,
-        "data": [],
         "errors": [
           "Unsupported language: invalid_language"
         ],
-        "timestamp": "2025-11-18T13:26:14.594Z"
+        "timestamp": "2025-11-21T07:00:59.700Z"
       },
-      "statusCode": 422,
-      "duration": 108,
-      "timestamp": "2025-11-18T13:26:14.696Z"
+      "statusCode": 500,
+      "duration": 102,
+      "timestamp": "2025-11-21T07:00:59.791Z"
     },
     {
       "testName": "健康检查端点测试",
@@ -250,16 +251,17 @@
       "responseData": {
         "success": true,
         "data": {
-          "status": "warning",
+          "status": "healthy",
           "memory": {
-            "rss": 343,
-            "heapTotal": 292,
-            "heapUsed": 258,
+            "rss": 392,
+            "heapTotal": 339,
+            "heapUsed": 310,
             "external": 6
           },
           "supportedLanguages": [
             "javascript",
             "typescript",
+            "tsx",
             "python",
             "java",
             "go",
@@ -269,13 +271,13 @@
             "csharp",
             "ruby"
           ],
-          "timestamp": "2025-11-18T13:26:14.706Z"
+          "timestamp": "2025-11-21T07:00:59.808Z"
         },
-        "timestamp": "2025-11-18T13:26:14.706Z"
+        "timestamp": "2025-11-21T07:00:59.808Z"
       },
       "statusCode": 200,
-      "duration": 13,
-      "timestamp": "2025-11-18T13:26:14.710Z"
+      "duration": 18,
+      "timestamp": "2025-11-21T07:00:59.812Z"
     },
     {
       "testName": "语言列表端点测试",
@@ -286,6 +288,7 @@
           "languages": [
             "javascript",
             "typescript",
+            "tsx",
             "python",
             "java",
             "go",
@@ -296,11 +299,11 @@
             "ruby"
           ]
         },
-        "timestamp": "2025-11-18T13:26:14.715Z"
+        "timestamp": "2025-11-21T07:00:59.820Z"
       },
       "statusCode": 200,
-      "duration": 6,
-      "timestamp": "2025-11-18T13:26:14.718Z"
+      "duration": 9,
+      "timestamp": "2025-11-21T07:00:59.822Z"
     },
     {
       "testName": "根路径端点测试",
@@ -309,11 +312,11 @@
         "name": "Tree-sitter API",
         "version": "v1",
         "status": "running",
-        "timestamp": "2025-11-18T13:26:14.724Z"
+        "timestamp": "2025-11-21T07:00:59.824Z"
       },
       "statusCode": 200,
-      "duration": 8,
-      "timestamp": "2025-11-18T13:26:14.728Z"
+      "duration": 4,
+      "timestamp": "2025-11-21T07:00:59.827Z"
     }
   ]
 }

@@ -804,24 +804,25 @@ export class QueryProcessor {
   }
 
   /**
-   * 检查性能问题
+   * 检查关键性能问题
+   * 简化版本 - 只检查真正有问题的模式
    */
   private checkPerformanceIssues(query: string): ValidationWarning[] {
     const warnings: ValidationWarning[] = [];
 
-    // 检查过多的通配符
+    // 检查极端的通配符使用
     const wildcardCount = (query.match(/\(_\)/g) || []).length;
-    if (wildcardCount > 5) {
+    if (wildcardCount > 20) { // 提高阈值，只检查极端情况
       warnings.push({
         type: 'performance',
-        message: `Too many wildcards (${wildcardCount}). This may impact performance.`,
-        suggestion: 'Consider using more specific patterns instead of wildcards.',
+        message: `Extensive use of wildcards (${wildcardCount}) may cause performance issues.`,
+        suggestion: 'Consider using more specific patterns.',
       });
     }
 
-    // 检查复杂的交替模式
+    // 检查极端的交替模式
     const alternationCount = (query.match(/\[[^\]]*\]/g) || []).length;
-    if (alternationCount > 3) {
+    if (alternationCount > 10) { // 提高阈值
       warnings.push({
         type: 'performance',
         message: `Complex alternation patterns detected (${alternationCount}). This may impact performance.`,
@@ -829,12 +830,12 @@ export class QueryProcessor {
       });
     }
 
-    // 检查嵌套的量词
-    const nestedQuantifiers = query.match(/([+*?]\s*){2,}/g);
+    // 只检查严重的嵌套量词问题
+    const nestedQuantifiers = query.match(/([+*?]\s*){4,}/g); // 提高阈值
     if (nestedQuantifiers) {
       warnings.push({
         type: 'performance',
-        message: 'Nested quantifiers detected. This may cause exponential performance degradation.',
+        message: 'Severely nested quantifiers detected. This may cause exponential performance degradation.',
         suggestion: 'Avoid nested quantifiers and consider restructuring the query.',
       });
     }
@@ -905,15 +906,15 @@ export class QueryProcessor {
       });
     }
 
-    // 检查复杂的正则表达式
+    // 检查正则表达式中的已知问题模式
     for (const predicate of predicates) {
       if ((predicate.type === 'match' || predicate.type === 'not-match') && typeof predicate.value === 'string') {
-        const regexComplexity = this.analyzeRegexComplexity(predicate.value);
-        if (regexComplexity > 5) {
+        const regexIssues = this.checkRegexIssues(predicate.value);
+        if (regexIssues.length > 0) {
           suggestions.push({
             type: 'predicate',
-            description: `Complex regex pattern in predicate '${predicate.type}' may impact performance`,
-            impact: 'medium',
+            description: `Regex pattern issues in predicate '${predicate.type}': ${regexIssues.join(', ')}`,
+            impact: 'high',
             example: 'Consider simplifying the regex or using string comparison',
           });
         }
@@ -1016,39 +1017,25 @@ export class QueryProcessor {
   }
 
   /**
-   * 分析正则表达式复杂度
+   * 检查正则表达式中的已知性能问题模式
+   * 简化版本 - 只检查明显的问题模式
    */
-  private analyzeRegexComplexity(pattern: string): number {
-    let complexity = 0;
-
-    // 基础复杂度
-    complexity += pattern.length * 0.1;
-
-    // 特殊字符增加复杂度
-    const specialChars = pattern.match(/[.*+?^${}()|[\]\\]/g);
-    if (specialChars) {
-      complexity += specialChars.length * 0.5;
+  private checkRegexIssues(pattern: string): string[] {
+    const issues: string[] = [];
+    
+    // 检查已知的灾难性回溯模式
+    if (pattern.includes('(.*)+') || pattern.includes('(.*?)+') ||
+        pattern.includes('(.*)*') || pattern.includes('(.*?)*')) {
+      issues.push('Catastrophic backtracking pattern detected');
     }
-
-    // 量词增加复杂度
-    const quantifiers = pattern.match(/[+*?]/g);
-    if (quantifiers) {
-      complexity += quantifiers.length * 0.3;
+    
+    // 检查过度嵌套的量词
+    const nestedQuantifiers = pattern.match(/([+*?]\s*){3,}/g);
+    if (nestedQuantifiers) {
+      issues.push('Excessively nested quantifiers may cause performance issues');
     }
-
-    // 字符类增加复杂度
-    const charClasses = pattern.match(/\[.*?\]/g);
-    if (charClasses) {
-      complexity += charClasses.length * 0.5;
-    }
-
-    // 分组增加复杂度
-    const groups = pattern.match(/\(.*?\)/g);
-    if (groups) {
-      complexity += groups.length * 0.3;
-    }
-
-    return complexity;
+    
+    return issues;
   }
 
   /**

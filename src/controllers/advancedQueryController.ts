@@ -28,14 +28,14 @@ export const createAdvancedQueryController = (service: TreeSitterService) => {
     try {
       const parseRequest = req.body as AdvancedParseRequest;
 
-      log.info(
-        'AdvancedQueryController',
-        `Processing advanced query request - RequestID: ${requestId}, Language: ${parseRequest.language}, Code length: ${parseRequest.code.length}`,
-      );
-
       // 验证高级查询请求
       const validationResult = validateAdvancedRequest(parseRequest);
       if (!validationResult.isValid) {
+        log.info(
+          'AdvancedQueryController',
+          `Advanced query request validation failed - RequestID: ${requestId}, Errors: ${validationResult.errors.join(', ')}`,
+        );
+        
         const response: ErrorResponse = {
           success: false,
           errors: validationResult.errors,
@@ -46,6 +46,11 @@ export const createAdvancedQueryController = (service: TreeSitterService) => {
         res.status(400).json(response);
         return;
       }
+
+      log.info(
+        'AdvancedQueryController',
+        `Processing advanced query request - RequestID: ${requestId}, Language: ${parseRequest.language}, Code length: ${parseRequest.code.length}`,
+      );
 
       // 处理高级查询请求
       const result = await service.processAdvancedRequest(parseRequest);
