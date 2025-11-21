@@ -334,13 +334,31 @@ export class TreeSitterService implements ITreeSitterService {
         parser.setLanguage(languageModule as any);
 
         const tree = parser.parse(request.code);
-        const query = this.queryProcessor.parseQuery(request.query!);
-        const matches = this.executeQuery(query, tree.rootNode);
+        
+        // 统一处理所有查询 - 合并主查询和额外查询
+        const allQueries: string[] = [
+            ...(request.query ? [request.query] : []),
+            ...(request.queries || [])
+        ];
+
+        // 执行所有查询并收集结果
+        const allMatches: any[] = [];
+        const errors: string[] = [];
+
+        for (const queryString of allQueries) {
+            try {
+                const query = this.queryProcessor.parseQuery(queryString);
+                const matches = this.executeQuery(query, tree.rootNode);
+                allMatches.push(...matches);
+            } catch (error) {
+                errors.push(`Error executing query "${queryString}": ${error instanceof Error ? error.message : String(error)}`);
+            }
+        }
 
         return {
-            success: true,
-            matches,
-            errors: [],
+            success: errors.length === 0,
+            matches: allMatches,
+            errors,
         };
     }
 
