@@ -213,7 +213,7 @@ export const createParseController = (service: TreeSitterService) => {
       const testRequest: ParseRequest = {
         language,
         code: 'test', // 简单的测试代码
-        query,
+        queries: [query],
       };
 
       // 尝试处理请求以验证查询

@@ -52,7 +52,7 @@ describe('parseController', () => {
       const parseRequest: ParseRequest = {
         language: 'javascript',
         code: 'function test() { return "hello"; }',
-        query: '(function_declaration) @func',
+        queries: ['(function_declaration) @func'],
       };
 
       const parseResult: ParseResult = {
@@ -101,7 +101,7 @@ describe('parseController', () => {
       const parseRequest: ParseRequest = {
         language: 'javascript',
         code: 'invalid code',
-        query: '(function_declaration) @func',
+        queries: ['(function_declaration) @func'],
       };
 
       const parseResult: ParseResult = {
@@ -139,7 +139,7 @@ describe('parseController', () => {
       const parseRequest: ParseRequest = {
         language: 'javascript',
         code: 'function test() { return "hello"; }',
-        query: '(function_declaration) @func',
+        queries: ['(function_declaration) @func'],
       };
 
       mockRequest.body = parseRequest;
@@ -172,7 +172,7 @@ describe('parseController', () => {
       const parseRequest: ParseRequest = {
         language: 'javascript',
         code: 'function test() { return "hello"; }',
-        query: '(function_declaration) @func',
+        queries: ['(function_declaration) @func'],
       };
 
       const parseResult: ParseResult = {
@@ -203,12 +203,12 @@ describe('parseController', () => {
         {
           language: 'javascript',
           code: 'function test1() { return "hello1"; }',
-          query: '(function_declaration) @func',
+          queries: ['(function_declaration) @func'],
         },
         {
           language: 'javascript',
           code: 'function test2() { return "hello2"; }',
-          query: '(function_declaration) @func',
+          queries: ['(function_declaration) @func'],
         },
       ];
 
@@ -285,12 +285,12 @@ describe('parseController', () => {
         {
           language: 'javascript',
           code: 'function test1() { return "hello1"; }',
-          query: '(function_declaration) @func',
+          queries: ['(function_declaration) @func'],
         },
         {
           language: 'javascript',
           code: 'invalid code',
-          query: '(function_declaration) @func',
+          queries: ['(function_declaration) @func'],
         },
       ];
 
@@ -371,7 +371,7 @@ describe('parseController', () => {
       const requests: ParseRequest[] = Array(11).fill({
         language: 'javascript',
         code: 'function test() { return "hello"; }',
-        query: '(function_declaration) @func',
+        queries: ['(function_declaration) @func'],
       });
 
       mockRequest.body = { requests };
@@ -416,7 +416,7 @@ describe('parseController', () => {
         {
           language: 'javascript',
           code: 'function test() { return "hello"; }',
-          query: '(function_declaration) @func',
+          queries: ['(function_declaration) @func'],
         },
         null,
       ];
@@ -444,7 +444,7 @@ describe('parseController', () => {
         {
           language: 'javascript',
           code: 'function test() { return "hello"; }',
-          query: '(function_declaration) @func',
+          queries: ['(function_declaration) @func'],
         },
       ];
 
@@ -510,7 +510,7 @@ describe('parseController', () => {
       expect(mockTreeSitterService.processRequest).toHaveBeenCalledWith({
         language,
         code: 'test',
-        query,
+        queries: [query],
       });
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.setHeader).toHaveBeenCalledWith(

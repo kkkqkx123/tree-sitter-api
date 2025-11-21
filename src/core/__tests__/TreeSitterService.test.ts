@@ -233,7 +233,7 @@ describe('TreeSitterService', () => {
       const request: ParseRequest = {
         language: 'javascript',
         code: 'const x = 1;',
-        query: '(program) @program',
+        queries: ['(program) @program'],
       };
 
       const result = await treeSitterService.processRequest(request);
@@ -250,7 +250,7 @@ describe('TreeSitterService', () => {
       const request: ParseRequest = {
         language: 'unsupported-language',
         code: 'some code',
-        query: '(program) @program',
+        queries: ['(program) @program'],
       };
 
       await expect(treeSitterService.processRequest(request)).rejects.toThrow('Language unsupported-language not available in test');
@@ -270,7 +270,7 @@ describe('TreeSitterService', () => {
       const request: ParseRequest = {
         language: 'javascript',
         code: undefined as any,
-        query: '(program) @program',
+        queries: ['(program) @program'],
       };
 
       await expect(treeSitterService.processRequest(request)).rejects.toThrow('Code is required');
@@ -280,7 +280,7 @@ describe('TreeSitterService', () => {
       const request: ParseRequest = {
         language: 'javascript',
         code: 'const x = 1;',
-        query: undefined as any,
+        queries: undefined as any,
       };
 
       await expect(treeSitterService.processRequest(request)).rejects.toThrow('Query is required');
@@ -290,7 +290,7 @@ describe('TreeSitterService', () => {
       const request: ParseRequest = {
         language: 'javascript',
         code: '',
-        query: '(program) @program',
+        queries: ['(program) @program'],
       };
 
       await expect(treeSitterService.processRequest(request)).rejects.toThrow('Code is required');

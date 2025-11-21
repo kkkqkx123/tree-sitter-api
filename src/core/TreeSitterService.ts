@@ -303,8 +303,8 @@ export class TreeSitterService implements ITreeSitterService {
         if (!request.code) {
             throw new Error('Code is required');
         }
-        if (!request.query) {
-            throw new Error('Query is required');
+        if (!request.queries || !Array.isArray(request.queries) || request.queries.length === 0) {
+            throw new Error('At least one query is required in the queries array');
         }
     }
 
@@ -335,11 +335,8 @@ export class TreeSitterService implements ITreeSitterService {
 
         const tree = parser.parse(request.code);
         
-        // 统一处理所有查询 - 合并主查询和额外查询
-        const allQueries: string[] = [
-            ...(request.query ? [request.query] : []),
-            ...(request.queries || [])
-        ];
+        // 统一处理所有查询 - 直接使用queries数组
+        const allQueries: string[] = request.queries || [];
 
         // 执行所有查询并收集结果
         const allMatches: any[] = [];

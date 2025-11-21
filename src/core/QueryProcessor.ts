@@ -15,8 +15,6 @@ import {
   ValidationResult,
   ValidationError,
   ValidationWarning,
-  // PredicateValidationResult,
-  // DirectiveValidationResult,
   OptimizationSuggestion,
 } from '../types/advancedQuery';
 import { Position } from '../types/api';
@@ -32,21 +30,21 @@ export class QueryProcessor {
   private wildcardRegex: RegExp;
 
   constructor() {
-    // 谓词正则表达式
-    this.predicateRegex = /#(\w+)(?:-?(\w+))?\?([^)]*)/g;
-    
-    // 指令正则表达式
-    this.directiveRegex = /#(\w+)!([^)]*)/g;
-    
+    // 谓词正则表达式 - 修复以支持复合谓词类型
+    this.predicateRegex = /#(\w+(?:-\w+)*)\?([^)]*)/g;
+
+    // 指令正则表达式 - 修复以支持复合指令类型
+    this.directiveRegex = /#(\w+(?:-\w+)*)!([^)]*)/g;
+
     // 锚点正则表达式
     this.anchorRegex = /\./g;
-    
+
     // 交替查询正则表达式
     this.alternationRegex = /\[[^\]]*\]/g;
-    
+
     // 量词正则表达式
     this.quantifierRegex = /[+*?]/g;
-    
+
     // 通配符正则表达式
     this.wildcardRegex = /_\)/g;
   }
@@ -63,15 +61,15 @@ export class QueryProcessor {
 
     // 解析查询
     const parsedQuery = this.parseQuery(query);
-    
+
     // 验证查询
     const validationResult = this.validateQuerySyntax(query);
-    
+
     // 生成优化建议
     const optimizationSuggestions = this.generateOptimizationSuggestions(parsedQuery);
 
     log.debug('QueryProcessor', `Query processing completed: ${validationResult.isValid ? 'valid' : 'invalid'}`);
-    
+
     return {
       parsedQuery,
       validationResult,
@@ -97,7 +95,7 @@ export class QueryProcessor {
     };
 
     log.debug('QueryProcessor', `Parsed query with ${predicates.length} predicates and ${directives.length} directives`);
-    
+
     return parsedQuery;
   }
 
@@ -107,9 +105,9 @@ export class QueryProcessor {
   public validateQuerySyntax(query: string): ValidationResult {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
-    
+
     log.debug('QueryProcessor', `Validating query syntax: ${query}`);
-    
+
     // 基本语法检查
     if (!query || query.trim().length === 0) {
       errors.push({
@@ -124,30 +122,30 @@ export class QueryProcessor {
         features: this.getEmptyFeatures(),
       };
     }
-    
+
     // 检查括号匹配
     const bracketErrors = this.validateBrackets(query);
     errors.push(...bracketErrors);
-    
+
     // 检查引号匹配
     const quoteErrors = this.validateQuotes(query);
     errors.push(...quoteErrors);
-    
+
     // 检查基本模式语法
     const patternErrors = this.validatePatterns(query);
     errors.push(...patternErrors);
-    
+
     // 性能警告
     const performanceWarnings = this.checkPerformanceIssues(query);
     warnings.push(...performanceWarnings);
-    
+
     // 分析查询特性
     const features = this.analyzeQueryFeatures(query);
-    
+
     const isValid = errors.length === 0;
-    
+
     log.debug('QueryProcessor', `Query validation result: ${isValid ? 'valid' : 'invalid'} (${errors.length} errors, ${warnings.length} warnings)`);
-    
+
     return {
       isValid,
       errors,
@@ -183,16 +181,16 @@ export class QueryProcessor {
    */
   private extractPatterns(query: string): QueryPattern[] {
     const patterns: QueryPattern[] = [];
-    
+
     // 简单的模式提取 - 按行分割
     const lines = query.split('\n').filter(line => line.trim() && !line.trim().startsWith(';'));
-    
+
     for (const line of lines) {
       const trimmedLine = line.trim();
       const captures = this.extractCaptures(trimmedLine);
       const predicates = this.extractPredicates(trimmedLine);
       const directives = this.extractDirectives(trimmedLine);
-      
+
       patterns.push({
         pattern: trimmedLine,
         captures,
@@ -200,7 +198,7 @@ export class QueryProcessor {
         directives,
       });
     }
-    
+
     return patterns;
   }
 
@@ -211,13 +209,13 @@ export class QueryProcessor {
     const captures: string[] = [];
     const captureRegex = /@(\w+)/g;
     let match;
-    
+
     while ((match = captureRegex.exec(pattern)) !== null) {
       if (match[1]) {
         captures.push(match[1]);
       }
     }
-    
+
     return captures;
   }
 
@@ -227,17 +225,17 @@ export class QueryProcessor {
   public extractPredicates(query: string): QueryPredicate[] {
     const predicates: QueryPredicate[] = [];
     let match;
-    
+
     // 重置正则表达式状态
     this.predicateRegex.lastIndex = 0;
-    
+
     while ((match = this.predicateRegex.exec(query)) !== null) {
       const predicate = this.parsePredicate(match, query);
       if (predicate) {
         predicates.push(predicate);
       }
     }
-    
+
     return predicates;
   }
 
@@ -247,30 +245,30 @@ export class QueryProcessor {
   private parsePredicate(match: RegExpExecArray, query: string): QueryPredicate | null {
     const fullMatch = match[0];
     const predicateType = match[1] as PredicateType;
-    const modifier = match[2];
-    const args = match[3];
-    
+    const args = match[2];
+
     // 检查谓词类型是否被允许
     if (!queryConfig.isPredicateAllowed(predicateType)) {
+      const error = new Error(`Unsupported predicate type: ${predicateType}`);
       log.warn('QueryProcessor', `Predicate type '${predicateType}' is not allowed`);
-      return null;
+      throw error;
     }
-    
-    // 解析修饰符
+
+    // 解析修饰符 - 从谓词类型中提取
     let negate = false;
     let quantifier: 'any' | 'all' | undefined;
-    
-    if (modifier === 'not') {
+
+    if (predicateType.startsWith('not-')) {
       negate = true;
-    } else if (modifier === 'any') {
+    } else if (predicateType.startsWith('any-')) {
       quantifier = 'any';
     }
-    
+
     // 解析参数
     let value: string | string[] = '';
     if (args) {
       const trimmedArgs = args.trim();
-      
+
       // 检查是否是数组格式
       if (trimmedArgs.startsWith('[') && trimmedArgs.endsWith(']')) {
         try {
@@ -284,10 +282,10 @@ export class QueryProcessor {
         value = trimmedArgs.replace(/^["']|["']$/g, '');
       }
     }
-    
+
     // 获取位置信息
     const position = this.getPosition(query, match.index);
-    
+
     const predicate: QueryPredicate = {
       type: predicateType,
       capture: this.extractCaptureFromPredicate(fullMatch),
@@ -295,11 +293,11 @@ export class QueryProcessor {
       negate,
       position,
     };
-    
+
     if (quantifier) {
       predicate.quantifier = quantifier;
     }
-    
+
     return predicate;
   }
 
@@ -317,17 +315,17 @@ export class QueryProcessor {
   public extractDirectives(query: string): QueryDirective[] {
     const directives: QueryDirective[] = [];
     let match;
-    
+
     // 重置正则表达式状态
     this.directiveRegex.lastIndex = 0;
-    
+
     while ((match = this.directiveRegex.exec(query)) !== null) {
       const directive = this.parseDirective(match, query);
       if (directive) {
         directives.push(directive);
       }
     }
-    
+
     return directives;
   }
 
@@ -337,20 +335,21 @@ export class QueryProcessor {
   private parseDirective(match: RegExpExecArray, query: string): QueryDirective | null {
     const directiveType = match[1] as DirectiveType;
     const args = match[2];
-    
+
     // 检查指令类型是否被允许
     if (!queryConfig.isDirectiveAllowed(directiveType)) {
+      const error = new Error(`Unsupported directive type: ${directiveType}`);
       log.warn('QueryProcessor', `Directive type '${directiveType}' is not allowed`);
-      return null;
+      throw error;
     }
-    
+
     // 解析参数
     const parameters: any[] = [];
     if (args) {
       const trimmedArgs = args.trim();
-      
-      // 简单的参数解析
-      const argMatches = trimmedArgs.match(/@(\w+)|"([^"]*)"|'([^']*)'|(\w+)/g);
+
+      // 改进的参数解析 - 正确处理引号和捕获名称
+      const argMatches = trimmedArgs.match(/@(\w+)|"([^"]*)"|'([^']*)'|(\S+)/g);
       if (argMatches) {
         for (const argMatch of argMatches) {
           if (argMatch.startsWith('@')) {
@@ -363,10 +362,10 @@ export class QueryProcessor {
         }
       }
     }
-    
+
     // 获取位置信息
     const position = this.getPosition(query, match.index);
-    
+
     return {
       type: directiveType,
       capture: this.extractCaptureFromDirective(match[0]),
@@ -410,11 +409,11 @@ export class QueryProcessor {
       const hasAlternations = this.alternationRegex.test(query);
       const hasQuantifiers = this.quantifierRegex.test(query);
       const hasWildcards = this.wildcardRegex.test(query);
-      
+
       // 计算谓词和指令数量
       const predicateCount = (query.match(/#\w+\?/g) || []).length;
       const directiveCount = (query.match(/#\w+!/g) || []).length;
-      
+
       // 计算复杂度
       let complexity: 'simple' | 'moderate' | 'complex' = 'simple';
       const featureCount = [
@@ -425,13 +424,13 @@ export class QueryProcessor {
         hasQuantifiers,
         hasWildcards,
       ].filter(Boolean).length;
-      
+
       if (featureCount >= 4 || predicateCount > 5 || directiveCount > 3) {
         complexity = 'complex';
       } else if (featureCount >= 2 || predicateCount > 2 || directiveCount > 1) {
         complexity = 'moderate';
       }
-      
+
       return {
         hasPredicates,
         hasDirectives,
@@ -446,17 +445,17 @@ export class QueryProcessor {
     } else if (predicates && directives) {
       const hasPredicates = predicates.length > 0;
       const hasDirectives = directives.length > 0;
-      
+
       // 计算复杂度
       let complexity: 'simple' | 'moderate' | 'complex' = 'simple';
       const featureCount = [hasPredicates, hasDirectives].filter(Boolean).length;
-      
+
       if (featureCount >= 2 || predicates.length > 5 || directives.length > 3) {
         complexity = 'complex';
       } else if (predicates.length > 2 || directives.length > 1) {
         complexity = 'moderate';
       }
-      
+
       return {
         hasPredicates,
         hasDirectives,
@@ -469,7 +468,7 @@ export class QueryProcessor {
         complexity,
       };
     }
-    
+
     return this.getEmptyFeatures();
   }
 
@@ -484,10 +483,10 @@ export class QueryProcessor {
       '[': ']',
       '{': '}',
     };
-    
+
     for (let i = 0; i < query.length; i++) {
       const char = query[i]!;
-      
+
       if (char in bracketPairs) {
         stack.push(char);
       } else if (Object.values(bracketPairs).includes(char)) {
@@ -501,7 +500,7 @@ export class QueryProcessor {
         }
       }
     }
-    
+
     // 检查未闭合的括号
     while (stack.length > 0) {
       const unclosed = stack.pop()!;
@@ -511,7 +510,7 @@ export class QueryProcessor {
         severity: 'error',
       });
     }
-    
+
     return errors;
   }
 
@@ -523,27 +522,27 @@ export class QueryProcessor {
     let inSingleQuote = false;
     let inDoubleQuote = false;
     let escapeNext = false;
-    
+
     for (let i = 0; i < query.length; i++) {
       const char = query[i]!;
-      
+
       if (escapeNext) {
         escapeNext = false;
         continue;
       }
-      
+
       if (char === '\\') {
         escapeNext = true;
         continue;
       }
-      
+
       if (char === "'" && !inDoubleQuote) {
         inSingleQuote = !inSingleQuote;
       } else if (char === '"' && !inSingleQuote) {
         inDoubleQuote = !inDoubleQuote;
       }
     }
-    
+
     if (inSingleQuote) {
       errors.push({
         type: 'syntax',
@@ -551,7 +550,7 @@ export class QueryProcessor {
         severity: 'error',
       });
     }
-    
+
     if (inDoubleQuote) {
       errors.push({
         type: 'syntax',
@@ -559,7 +558,7 @@ export class QueryProcessor {
         severity: 'error',
       });
     }
-    
+
     return errors;
   }
 
@@ -568,11 +567,11 @@ export class QueryProcessor {
    */
   private validatePatterns(query: string): ValidationError[] {
     const errors: ValidationError[] = [];
-    
+
     // 检查无效的节点类型
     const invalidNodePattern = /\([^)]*[^a-zA-Z_][^)]*\)/g;
     let match;
-    
+
     while ((match = invalidNodePattern.exec(query)) !== null) {
       const pattern = match[0];
       if (!pattern.includes('@') && !pattern.includes('_') && !/^[a-zA-Z_]/.test(pattern.substring(1))) {
@@ -583,10 +582,10 @@ export class QueryProcessor {
         });
       }
     }
-    
+
     // 检查无效的捕获名称
     const invalidCapturePattern = /@([^a-zA-Z_]\w*)/g;
-    
+
     while ((match = invalidCapturePattern.exec(query)) !== null) {
       errors.push({
         type: 'syntax',
@@ -594,7 +593,7 @@ export class QueryProcessor {
         severity: 'error',
       });
     }
-    
+
     return errors;
   }
 
@@ -603,7 +602,7 @@ export class QueryProcessor {
    */
   private checkPerformanceIssues(query: string): ValidationWarning[] {
     const warnings: ValidationWarning[] = [];
-    
+
     // 检查过多的通配符
     const wildcardCount = (query.match(/\(_\)/g) || []).length;
     if (wildcardCount > 5) {
@@ -613,7 +612,7 @@ export class QueryProcessor {
         suggestion: 'Consider using more specific patterns instead of wildcards.',
       });
     }
-    
+
     // 检查复杂的交替模式
     const alternationCount = (query.match(/\[[^\]]*\]/g) || []).length;
     if (alternationCount > 3) {
@@ -623,7 +622,7 @@ export class QueryProcessor {
         suggestion: 'Consider simplifying alternation patterns or using multiple queries.',
       });
     }
-    
+
     // 检查嵌套的量词
     const nestedQuantifiers = query.match(/([+*?]\s*){2,}/g);
     if (nestedQuantifiers) {
@@ -633,7 +632,7 @@ export class QueryProcessor {
         suggestion: 'Avoid nested quantifiers and consider restructuring the query.',
       });
     }
-    
+
     return warnings;
   }
 
@@ -646,23 +645,23 @@ export class QueryProcessor {
     features: QueryFeatures
   ): string[] {
     const suggestions: string[] = [];
-    
+
     if (errors.length > 0) {
       suggestions.push('Fix syntax errors before proceeding');
     }
-    
+
     if (warnings.length > 0) {
       suggestions.push('Consider addressing performance warnings for better query performance');
     }
-    
+
     if (features.complexity === 'complex') {
       suggestions.push('Consider breaking down complex queries into simpler ones');
     }
-    
+
     if (features.predicateCount === 0 && features.directiveCount === 0) {
       suggestions.push('Consider using predicates or directives for more precise query results');
     }
-    
+
     return suggestions;
   }
 
@@ -851,10 +850,10 @@ export class QueryProcessor {
    */
   public validateQueryStructure(query: string): StructureValidationResult {
     const issues: any[] = [];
-    
+
     try {
       const parsedQuery = this.parseQuery(query);
-      
+
       // 检查谓词数量
       if (!queryConfig.isPredicateCountValid(parsedQuery.predicates.length)) {
         issues.push({
@@ -863,7 +862,7 @@ export class QueryProcessor {
           severity: 'error',
         });
       }
-      
+
       // 检查指令数量
       if (!queryConfig.isDirectiveCountValid(parsedQuery.directives.length)) {
         issues.push({
@@ -872,7 +871,7 @@ export class QueryProcessor {
           severity: 'error',
         });
       }
-      
+
       // 检查基本语法
       if (!query.trim()) {
         issues.push({
@@ -881,7 +880,7 @@ export class QueryProcessor {
           severity: 'error',
         });
       }
-      
+
       return {
         isValid: issues.length === 0,
         patterns: parsedQuery.patterns,
@@ -893,7 +892,7 @@ export class QueryProcessor {
         message: `Failed to parse query: ${error instanceof Error ? error.message : String(error)}`,
         severity: 'error',
       });
-      
+
       return {
         isValid: false,
         patterns: [],

@@ -133,7 +133,7 @@ describe('healthController', () => {
             heapUsed: 150,
             external: 50,
           },
-          supportedLanguages: ['javascript', 'typescript', 'python'],
+          supportedLanguages: ['javascript', 'typescript', 'tsx', 'python'],
           timestamp: '2023-01-01T00:00:00.000Z',
         },
         timestamp: expect.any(String),

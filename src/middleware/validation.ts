@@ -63,63 +63,61 @@ export const validateParseRequest = (
       );
     }
 
-    // 验证查询字段
-    if (body.query && typeof body.query !== 'string') {
+    // 验证查询数组
+    if (!body.queries) {
       throw new TreeSitterError(
         ErrorType.VALIDATION_ERROR,
         ErrorSeverity.MEDIUM,
-        'Invalid field: query (string expected)',
+        'Missing required field: queries (array of strings expected)',
       );
     }
 
-    // 验证查询数组
-    if (body.queries) {
-      if (!Array.isArray(body.queries)) {
+    if (!Array.isArray(body.queries)) {
+      throw new TreeSitterError(
+        ErrorType.VALIDATION_ERROR,
+        ErrorSeverity.MEDIUM,
+        'Invalid field: queries (array expected)',
+      );
+    }
+
+    if (body.queries.length === 0) {
+      throw new TreeSitterError(
+        ErrorType.VALIDATION_ERROR,
+        ErrorSeverity.MEDIUM,
+        'At least one query is required in the queries array',
+      );
+    }
+
+    // 检查查询数组中的每个元素
+    for (let i = 0; i < body.queries.length; i++) {
+      if (typeof body.queries[i] !== 'string') {
         throw new TreeSitterError(
           ErrorType.VALIDATION_ERROR,
           ErrorSeverity.MEDIUM,
-          'Invalid field: queries (array expected)',
+          `Invalid query at index ${i}: string expected`,
         );
-      }
-
-      // 检查查询数组中的每个元素
-      for (let i = 0; i < body.queries.length; i++) {
-        if (typeof body.queries[i] !== 'string') {
-          throw new TreeSitterError(
-            ErrorType.VALIDATION_ERROR,
-            ErrorSeverity.MEDIUM,
-            `Invalid query at index ${i}: string expected`,
-          );
-        }
       }
     }
 
     // 验证查询数量
-    const queryCount = (body.query ? 1 : 0) + (body.queries?.length || 0);
-    if (queryCount > 10) {
+    if (body.queries.length > 10) {
       throw new TreeSitterError(
         ErrorType.VALIDATION_ERROR,
         ErrorSeverity.MEDIUM,
-        `Too many queries. Maximum allowed is 10, got ${queryCount}`,
+        `Too many queries. Maximum allowed is 10, got ${body.queries.length}`,
       );
     }
 
     // 验证查询语法（基本检查）
-    if (body.query) {
-      validateQuerySyntax(body.query, 'query');
-    }
-
-    if (body.queries) {
-      body.queries.forEach((query, index) => {
-        validateQuerySyntax(query, `queries[${index}]`);
-      });
-    }
+    body.queries.forEach((query, index) => {
+      validateQuerySyntax(query, `queries[${index}]`);
+    });
 
     // 记录验证通过的请求
     const requestId = (req.headers['x-request-id'] as string) || 'unknown';
     log.debug(
       'Validation',
-      `Parse request validated successfully - RequestID: ${requestId}, Language: ${body.language}, Code length: ${body.code.length}, Query count: ${queryCount}`,
+      `Parse request validated successfully - RequestID: ${requestId}, Language: ${body.language}, Code length: ${body.code.length}, Query count: ${body.queries.length}`,
     );
 
     next();

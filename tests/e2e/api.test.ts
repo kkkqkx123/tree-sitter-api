@@ -11,8 +11,7 @@ import TreeSitterServer from '../../src/server';
 interface TestData {
   language: string;
   code: string;
-  query?: string;
-  queries?: string[];
+  queries: string[];
 }
 
 // 测试结果接口

@@ -1,8 +1,8 @@
 {
   "language": "javascript",
   "code": "function hello() { console.log('Hello, World!'); }\nclass MyClass {\n  constructor() {\n    this.value = 42;\n  }\n\n  getValue() {\n    return this.value;\n  }\n}",
-  "query": "(function_declaration) @func",
   "queries": [
+    "(function_declaration) @func",
     "(class_declaration) @class",
     "(call_expression) @call"
   ]

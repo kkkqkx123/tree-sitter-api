@@ -35,12 +35,14 @@ export class DirectiveProcessor {
           currentMatches = directiveResult.result.matches || currentMatches;
         }
       } catch (error) {
-        // 如果发生错误，记录错误但继续处理其他指令
+        // 如果发生错误，记录错误并重新抛出以停止处理
         directiveResult = {
           directive,
           applied: false,
           error: error instanceof Error ? error.message : String(error),
         };
+        results.push(directiveResult);
+        throw error;
       }
 
       results.push(directiveResult);
@@ -99,13 +101,13 @@ export class DirectiveProcessor {
       );
     }
 
-    const key = directive.parameters[0];
-    const value = directive.parameters[1];
+    // 修复参数解析 - 第一个参数应该是捕获名称，第二个是键，第三个是值
+    const captureName = directive.parameters[0].replace('@', '');
+    const key = directive.parameters[1];
+    const value = directive.parameters[2];
 
     // 根据捕获名称过滤匹配项
-    const filteredMatches = directive.capture
-      ? matches.filter(match => match.captureName === directive.capture)
-      : matches;
+    const filteredMatches = matches.filter(match => match.captureName === captureName);
 
     // 更新匹配项的元数据
     const updatedMatches: EnhancedMatchResult[] = matches.map(match => {
@@ -151,7 +153,10 @@ export class DirectiveProcessor {
       );
     }
 
-    const pattern = directive.parameters[0];
+    // 修复参数解析 - 第一个参数应该是捕获名称，第二个是模式
+    const captureName = directive.parameters[0].replace('@', '');
+    const pattern = directive.parameters[1];
+    
     if (typeof pattern !== 'string') {
       throw new DirectiveError(
         directive.type,
@@ -162,9 +167,7 @@ export class DirectiveProcessor {
 
     try {
       // 根据捕获名称过滤匹配项
-      const filteredMatches = directive.capture
-        ? matches.filter(match => match.captureName === directive.capture)
-        : matches;
+      const filteredMatches = matches.filter(match => match.captureName === captureName);
 
       // 从匹配项文本中移除模式
       const updatedMatches: EnhancedMatchResult[] = matches.map(match => {

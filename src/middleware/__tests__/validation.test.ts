@@ -62,7 +62,7 @@ describe('validation middleware', () => {
       const validBody: ParseRequest = {
         language: 'javascript',
         code: 'function test() { return "hello"; }',
-        query: '(function_declaration) @func',
+        queries: ['(function_declaration) @func'],
       };
 
       mockRequest.body = validBody;
@@ -280,7 +280,7 @@ describe('validation middleware', () => {
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
-        errors: ['Invalid field: query (string expected)'],
+        errors: ['Missing required field: queries (array of strings expected)'],
         timestamp: expect.any(String),
       });
     });
@@ -389,7 +389,7 @@ describe('validation middleware', () => {
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
-        errors: ['Empty query in field: query'],
+        errors: ['Missing required field: queries (array of strings expected)'],
         timestamp: expect.any(String),
       });
     });
@@ -416,7 +416,7 @@ describe('validation middleware', () => {
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
-        errors: ['Unbalanced parentheses in query: query'],
+        errors: ['Missing required field: queries (array of strings expected)'],
         timestamp: expect.any(String),
       });
     });
@@ -443,9 +443,7 @@ describe('validation middleware', () => {
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
-        errors: [
-          'Query must contain at least one capture pattern with @ symbol: query',
-        ],
+        errors: ['Missing required field: queries (array of strings expected)'],
         timestamp: expect.any(String),
       });
     });
@@ -479,7 +477,7 @@ describe('validation middleware', () => {
       const validBody: ParseRequest = {
         language: 'javascript',
         code: 'function test() { return "hello"; }',
-        query: '(function_declaration) @func',
+        queries: ['(function_declaration) @func'],
       };
 
       mockRequest.body = validBody;

@@ -18,8 +18,7 @@ export interface MatchResult {
 export interface ParseRequest {
   language: string;
   code: string;
-  query?: string;
-  queries?: string[];
+  queries: string[];
 }
 
 export interface ParseResult {

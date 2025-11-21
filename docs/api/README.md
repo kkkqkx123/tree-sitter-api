@@ -24,7 +24,6 @@ Tree-sitter Query REST API 提供了一个基于HTTP的接口，用于批量处�
 {
   "language": "javascript",
   "code": "const x = 1;",
-  "query": "(variable_declarator) @var",
   "queries": ["(variable_declarator) @var", "(identifier) @id"]
 }
 ```
@@ -32,13 +31,12 @@ Tree-sitter Query REST API 提供了一个基于HTTP的接口，用于批量处�
 **参数说明**:
 - `language` (string, 必需): 编程语言标识符，如 "javascript", "python", "java" 等
 - `code` (string, 必需): 要解析的代码内容，最大长度由 `MAX_CODE_LENGTH` 环境变量配置（默认100KB）
-- `query` (string, 可选): 单个Tree-sitter查询字符串
-- `queries` (string[], 可选): 多个Tree-sitter查询字符串数组
+- `queries` (string[], 必需): Tree-sitter查询字符串数组，至少需要一个查询，最多10个查询
 
 **请求验证规则**:
 - `language` 必须是字符串，格式为字母数字字符、连字符和下划线
 - `code` 必须是字符串，且长度不超过配置的最大值
-- `query` 和 `queries` 至少要提供一个，最多10个查询
+- `queries` 数组必须包含至少一个查询，最多10个查询
 - 查询语法必须有效（平衡的括号，包含@符号）
 
 **响应格式**:
