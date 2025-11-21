@@ -15,109 +15,62 @@ const mockLanguageModule = {
                 const results = [];
                 
                 // 检查查询中是否包含特定的捕获模式
-                if (query.includes('(identifier) @identifier')) {
-                    results.push({
-                        captures: [
-                            {
-                                name: 'identifier',
-                                node: {
-                                    type: 'identifier',
-                                    text: 'testVariable',
-                                    startPosition: { row: 0, column: 0 },
-                                    endPosition: { row: 0, column: 12 },
-                                    isNamed: true,
-                                    childCount: 0,
-                                    children: [],
-                                },
-                            },
-                        ],
+                // 修复：使用更精确的匹配，避免误匹配
+                const captures = [];
+                
+                // 检查是否包含identifier模式
+                if (/\(identifier\)\s*@identifier/.test(query) ||
+                    (query.includes('(identifier)') && query.includes('@identifier'))) {
+                    captures.push({
+                        name: 'identifier',
+                        node: {
+                            type: 'identifier',
+                            text: 'testVariable',
+                            startPosition: { row: 0, column: 0 },
+                            endPosition: { row: 0, column: 12 },
+                            isNamed: true,
+                            childCount: 0,
+                            children: [],
+                        },
                     });
-                } else if (query.includes('(comment) @comment')) {
-                    results.push({
-                        captures: [
-                            {
-                                name: 'comment',
-                                node: {
-                                    type: 'comment',
-                                    text: '// TODO: implement this',
-                                    startPosition: { row: 2, column: 0 },
-                                    endPosition: { row: 2, column: 24 },
-                                    isNamed: true,
-                                    childCount: 0,
-                                    children: [],
-                                },
-                            },
-                        ],
+                }
+                
+                // 检查是否包含function模式
+                if (/\(function\)\s*@function/.test(query) ||
+                    (query.includes('(function)') && query.includes('@function'))) {
+                    captures.push({
+                        name: 'function',
+                        node: {
+                            type: 'function',
+                            text: 'testFunction',
+                            startPosition: { row: 1, column: 0 },
+                            endPosition: { row: 1, column: 12 },
+                            isNamed: true,
+                            childCount: 0,
+                            children: [],
+                        },
                     });
-                } else if (query.includes('(function) @function')) {
-                    results.push({
-                        captures: [
-                            {
-                                name: 'function',
-                                node: {
-                                    type: 'function',
-                                    text: 'testFunction',
-                                    startPosition: { row: 1, column: 0 },
-                                    endPosition: { row: 1, column: 12 },
-                                    isNamed: true,
-                                    childCount: 0,
-                                    children: [],
-                                },
-                            },
-                        ],
+                }
+                
+                // 检查是否包含comment模式
+                if (/\(comment\)\s*@comment/.test(query) ||
+                    (query.includes('(comment)') && query.includes('@comment'))) {
+                    captures.push({
+                        name: 'comment',
+                        node: {
+                            type: 'comment',
+                            text: '// TODO: implement this',
+                            startPosition: { row: 2, column: 0 },
+                            endPosition: { row: 2, column: 24 },
+                            isNamed: true,
+                            childCount: 0,
+                            children: [],
+                        },
                     });
-                } else {
-                    // 如果查询包含多个模式，返回所有匹配的捕获
-                    const captures = [];
-                    
-                    if (query.includes('identifier')) {
-                        captures.push({
-                            name: 'identifier',
-                            node: {
-                                type: 'identifier',
-                                text: 'testVariable',
-                                startPosition: { row: 0, column: 0 },
-                                endPosition: { row: 0, column: 12 },
-                                isNamed: true,
-                                childCount: 0,
-                                children: [],
-                            },
-                        });
-                    }
-                    
-                    if (query.includes('function')) {
-                        captures.push({
-                            name: 'function',
-                            node: {
-                                type: 'function',
-                                text: 'testFunction',
-                                startPosition: { row: 1, column: 0 },
-                                endPosition: { row: 1, column: 12 },
-                                isNamed: true,
-                                childCount: 0,
-                                children: [],
-                            },
-                        });
-                    }
-                    
-                    if (query.includes('comment')) {
-                        captures.push({
-                            name: 'comment',
-                            node: {
-                                type: 'comment',
-                                text: '// TODO: implement this',
-                                startPosition: { row: 2, column: 0 },
-                                endPosition: { row: 2, column: 24 },
-                                isNamed: true,
-                                childCount: 0,
-                                children: [],
-                            },
-                        });
-                    }
-                    
-                    if (captures.length > 0) {
-                        results.push({ captures });
-                    }
+                }
+                
+                if (captures.length > 0) {
+                    results.push({ captures });
                 }
                 
                 return results;
@@ -409,7 +362,10 @@ describe('Directive Integration Tests', () => {
         (#eq? @identifier "testVariable")
         (#set! @identifier "category" "variable")
       `;
+            console.log(`[DEBUG] Test query: ${JSON.stringify(query)}`);
+            console.log(`[DEBUG] Test: query contains #eq? = ${query.includes('#eq?')}`);
 
+            console.log(`[DEBUG] Test: About to execute query with predicates`);
             const result: AdvancedParseResult = await executor.executeQueryWithAdvancedFeatures(
                 mockTree,
                 query,
@@ -429,7 +385,10 @@ describe('Directive Integration Tests', () => {
         (#set! @identifier "category" "test")
         (#strip! @identifier "Variable")
       `;
+            console.log(`[DEBUG] Test query: ${JSON.stringify(query)}`);
+            console.log(`[DEBUG] Test: query contains #match? = ${query.includes('#match?')}`);
 
+            console.log(`[DEBUG] Test: About to execute query with match predicate`);
             const result: AdvancedParseResult = await executor.executeQueryWithAdvancedFeatures(
                 mockTree,
                 query,

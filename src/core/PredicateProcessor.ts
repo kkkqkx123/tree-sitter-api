@@ -63,12 +63,15 @@ export class PredicateProcessor {
         }
       }
 
-      // 只有当匹配项有对应的谓词且所有谓词都通过时，才保留该匹配项
+      // 修改逻辑：只有当有谓词应用到这个匹配项且所有谓词都通过时，才保留该匹配项
+      // 这样可以确保只有真正满足谓词条件的匹配项才会被保留
       if (hasMatchingPredicate && allPredicatesPassed) {
         filteredMatches.push({
           ...match,
           predicateResults: matchPredicateResults,
         });
+      } else if (!hasMatchingPredicate) {
+        // 不保留没有匹配谓词的匹配项
       }
 
       results.push(...matchPredicateResults);

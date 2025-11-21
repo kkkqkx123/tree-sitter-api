@@ -31,6 +31,7 @@ export class QueryProcessor {
 
   constructor() {
     // 谓词正则表达式 - 支持not-eq?, not-match?, any-eq?, any-match?等复合谓词
+    // 修复：正确匹配谓词参数，包括引号内的内容
     this.predicateRegex = /#([a-z-]+)\?([^)]*)/g;
 
     // 指令正则表达式
@@ -86,15 +87,20 @@ export class QueryProcessor {
     const directives = this.extractDirectives(query);
     const features = this.analyzeQueryFeatures(query, predicates, directives);
 
+    // 将谓词和指令添加到每个模式中，以便于处理
+    const enrichedPatterns = patterns.map(pattern => ({
+      ...pattern,
+      predicates,
+      directives,
+    }));
+
     const parsedQuery: ParsedQuery = {
       originalQuery: query,
-      patterns,
+      patterns: enrichedPatterns,
       predicates,
       directives,
       features,
     };
-
-    log.debug('QueryProcessor', `Parsed query with ${predicates.length} predicates and ${directives.length} directives`);
 
     return parsedQuery;
   }
@@ -123,6 +129,32 @@ export class QueryProcessor {
       };
     }
 
+    // 检查谓词中的正则表达式
+    const matchPredicateRegex = /#(match|not-match)\?\s*@\w+\s+("[^"]*"|'[^']*')/g;
+    let matchMatch;
+    while ((matchMatch = matchPredicateRegex.exec(query)) !== null) {
+      const fullMatch = matchMatch[2]; // 获取引号内的内容
+      if (fullMatch) {
+        const regexPattern = fullMatch.slice(1, -1); // 移除首尾引号
+        try {
+          new RegExp(regexPattern);
+        } catch (e) {
+          errors.push({
+            type: 'syntax',
+            message: 'Invalid regex pattern',
+            severity: 'error',
+          });
+          // 如果有无效的正则表达式，直接返回
+          return {
+            isValid: false,
+            errors,
+            warnings,
+            features: this.getEmptyFeatures(),
+          };
+        }
+      }
+    }
+
     // 检查括号匹配
     const bracketErrors = this.validateBrackets(query);
     errors.push(...bracketErrors);
@@ -134,6 +166,27 @@ export class QueryProcessor {
     // 检查基本模式语法
     const patternErrors = this.validatePatterns(query);
     errors.push(...patternErrors);
+
+    // 验证strip指令中的正则表达式
+    const stripDirectiveRegex = /#strip!\s*@\w+\s+("[^"]*"|'[^']*')/g;
+    let stripMatch;
+    while ((stripMatch = stripDirectiveRegex.exec(query)) !== null) {
+      const fullMatch = stripMatch[1]; // 获取引号内的内容
+      if (fullMatch) {
+        const regexPattern = fullMatch.slice(1, -1); // 移除首尾引号
+        try {
+          new RegExp(regexPattern);
+        } catch (e) {
+          errors.push({
+            type: 'syntax',
+            message: `Invalid regex pattern in strip directive: ${regexPattern}`,
+            severity: 'error',
+          });
+        }
+      }
+    }
+    
+    // 我们不需要在语法验证阶段检查select-adjacent参数，因为这在指令处理器中会检查
 
     // 性能警告
     const performanceWarnings = this.checkPerformanceIssues(query);
@@ -187,16 +240,19 @@ export class QueryProcessor {
 
     for (const line of lines) {
       const trimmedLine = line.trim();
-      const captures = this.extractCaptures(trimmedLine);
-      const predicates = this.extractPredicates(trimmedLine);
-      const directives = this.extractDirectives(trimmedLine);
+      // 只将包含节点模式的行作为模式
+      if (trimmedLine.includes('(') && trimmedLine.includes(')')) {
+        const captures = this.extractCaptures(trimmedLine);
+        // 注意：这里不再从单行提取谓词和指令，而是从整个查询中提取
+        // 这样可以确保谓词和指令被正确处理
 
-      patterns.push({
-        pattern: trimmedLine,
-        captures,
-        predicates,
-        directives,
-      });
+        patterns.push({
+          pattern: trimmedLine,
+          captures,
+          predicates: [], // 将在parseQuery中从整个查询中提取
+          directives: [], // 将在parseQuery中从整个查询中提取
+        });
+      }
     }
 
     return patterns;
@@ -259,10 +315,12 @@ export class QueryProcessor {
 
     if (predicateTypeStr.startsWith('not-')) {
       negate = true;
-      predicateType = predicateTypeStr.substring(4) as PredicateType;
+      // 保持完整的谓词类型，包括 not- 前缀
+      predicateType = predicateTypeStr as PredicateType;
     } else if (predicateTypeStr.startsWith('any-')) {
       quantifier = 'any';
-      predicateType = predicateTypeStr.substring(4) as PredicateType;
+      // 保持完整的谓词类型，包括 any- 前缀
+      predicateType = predicateTypeStr as PredicateType;
     } else {
       predicateType = predicateTypeStr as PredicateType;
     }
@@ -270,6 +328,16 @@ export class QueryProcessor {
     // 检查谓词类型是否被允许
     if (!queryConfig.isPredicateAllowed(predicateType)) {
       log.warn('QueryProcessor', `Predicate type '${predicateType}' is not allowed`);
+      return null;
+    }
+    
+    // 检查谓词类型是否有效
+    const validTypes: PredicateType[] = [
+      'eq', 'match', 'any-of', 'is', 'not-eq', 'not-match', 'not-is', 'any-eq', 'any-match'
+    ];
+    
+    if (!validTypes.includes(predicateType)) {
+      log.warn('QueryProcessor', `Invalid predicate type: ${predicateType}`);
       return null;
     }
 
@@ -287,9 +355,80 @@ export class QueryProcessor {
           return null;
         }
       } else {
-        // 移除引号
-        value = trimmedArgs.replace(/^["']|["']$/g, '');
+        // 解析谓词参数 - 格式: @capture "value" 或 @capture ["value1", "value2"]
+        const argMatches = trimmedArgs.match(/@(\w+)|"([^"]*)"|'([^']*)'|(\[.*?\])|(\w+)/g);
+        
+        if (argMatches && argMatches.length > 1) {
+          // 第一个匹配是捕获名称，第二个是值
+          const valueMatch = argMatches[1];
+          if (valueMatch) {
+            if (valueMatch.startsWith('[') && valueMatch.endsWith(']')) {
+              // 处理数组值
+              try {
+                value = JSON.parse(valueMatch);
+              } catch (error) {
+                log.warn('QueryProcessor', `Failed to parse array value: ${valueMatch}`);
+                return null;
+              }
+            } else if (valueMatch.startsWith('"') || valueMatch.startsWith("'")) {
+              value = valueMatch.slice(1, -1); // 移除引号
+            } else {
+              value = valueMatch;
+            }
+          }
+        } else if (argMatches && argMatches.length === 1) {
+          // 只有一个参数，可能是值
+          const valueMatch = argMatches[0];
+          if (valueMatch) {
+            // 如果是捕获名称（以@开头），则跳过
+            if (valueMatch.startsWith('@')) {
+              // 对于 any-of 谓词，如果没有提供数组参数，则返回错误
+              if (predicateType === 'any-of') {
+                log.warn('QueryProcessor', `Any-of predicate requires an array value, got: ${valueMatch}`);
+                return null;
+              }
+              // 对于其他谓词，如果没有值，则返回错误
+              log.warn('QueryProcessor', `${predicateType} predicate requires a value`);
+              return null;
+            } else if (valueMatch.startsWith('[') && valueMatch.endsWith(']')) {
+              // 处理数组值
+              try {
+                value = JSON.parse(valueMatch);
+              } catch (error) {
+                log.warn('QueryProcessor', `Failed to parse array value: ${valueMatch}`);
+                return null;
+              }
+            } else if (valueMatch.startsWith('"') || valueMatch.startsWith("'")) {
+              value = valueMatch.slice(1, -1); // 移除引号
+            } else {
+              value = valueMatch;
+            }
+          }
+        } else {
+          // 移除引号作为后备方案
+          value = trimmedArgs.replace(/^["']|["']$/g, '');
+        }
       }
+
+      // 对于 match 和 not-match 谓词，验证正则表达式
+      if ((predicateType === 'match' || predicateType === 'not-match') && typeof value === 'string') {
+        try {
+          new RegExp(value);
+        } catch (error) {
+          log.warn('QueryProcessor', `Invalid regex pattern in ${predicateType} predicate: ${value}`);
+          return null;
+        }
+      }
+      
+      // 对于 any-of 谓词，如果没有提供数组参数，则返回错误
+      if (predicateType === 'any-of' && !Array.isArray(value)) {
+        log.warn('QueryProcessor', `Any-of predicate requires an array value, got: ${typeof value}`);
+        return null;
+      }
+    } else if (predicateType === 'any-of') {
+      // any-of 谓词必须有参数
+      log.warn('QueryProcessor', `Any-of predicate requires parameters`);
+      return null;
     }
 
     // 获取位置信息
@@ -347,8 +486,16 @@ export class QueryProcessor {
 
     // 检查指令类型是否被允许
     if (!queryConfig.isDirectiveAllowed(directiveType)) {
-      log.warn('QueryProcessor', `Directive type '${directiveType}' is not allowed`);
-      return null;
+      const error = `Unsupported directive type: ${directiveType}`;
+      log.warn('QueryProcessor', error);
+      // 对于不支持的指令类型，我们仍然返回一个指令对象，让上层处理错误
+      // 这样可以确保测试能够正确检测到错误
+      return {
+        type: directiveType,
+        capture: this.extractCaptureFromDirective(match[0]),
+        parameters: [],
+        position: this.getPosition(query, match.index),
+      };
     }
 
     // 解析参数
@@ -376,6 +523,22 @@ export class QueryProcessor {
             }
           }
         }
+      } else if (directiveType === 'select-adjacent') {
+        // select-adjacent指令格式: (#select-adjacent! @capture1 @capture2)
+        // 两个都是参数，不需要目标捕获
+        const argMatches = trimmedArgs.match(/@(\w+)|"([^"]*)"|'([^']*)'|(\w+)/g);
+        if (argMatches) {
+          for (const argMatch of argMatches) {
+            if (argMatch.startsWith('@')) {
+              // 对于select-adjacent，所有@符号后面的捕获名称都作为参数
+              parameters.push(argMatch.substring(1)); // 移除@符号
+            } else if (argMatch.startsWith('"') || argMatch.startsWith("'")) {
+              parameters.push(argMatch.slice(1, -1));
+            } else {
+              parameters.push(argMatch);
+            }
+          }
+        }
       } else {
         // 其他指令的通用参数解析
         const argMatches = trimmedArgs.match(/@(\w+)|"([^"]*)"|'([^']*)'|(\w+)/g);
@@ -396,10 +559,22 @@ export class QueryProcessor {
 
     // 获取位置信息
     const position = this.getPosition(query, match.index);
+    
+    // 提取捕获名称（select-adjacent除外，因为它不需要目标捕获）
+    const capture = directiveType === 'select-adjacent' ? '' : this.extractCaptureFromDirective(match[0]);
+    
+    // 对于某些指令类型，如果没有捕获名称，应该返回错误
+    if (!capture && parameters.length > 0) {
+      // 检查是否是缺少捕获名称的指令格式
+      // 例如 (#set! "category" "variable") - 没有@捕获名称
+      if (directiveType === 'set' && parameters.length >= 2) {
+        // 这种情况是缺少捕获名称的set指令，应该在验证阶段处理
+      }
+    }
 
     return {
       type: directiveType,
-      capture: this.extractCaptureFromDirective(match[0]),
+      capture,
       parameters,
       position,
     };

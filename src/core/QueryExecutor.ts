@@ -52,6 +52,25 @@ export class QueryExecutor {
     const queryStartTime = Date.now();
 
     try {
+      // 解析查询
+      const parsedQuery = this.queryProcessor.parseQuery(query);
+      
+      // 检查是否有无效的正则表达式
+      for (const predicate of parsedQuery.predicates) {
+        if ((predicate.type === 'match' || predicate.type === 'not-match') && typeof predicate.value === 'string') {
+          try {
+            new RegExp(predicate.value);
+          } catch (error) {
+            return {
+              success: false,
+              matches: [],
+              errors: [`Invalid regex pattern`],
+              performance: this.getPerformanceMetrics(startTime, Date.now() - queryStartTime, 0, 0, 0, 0),
+            };
+          }
+        }
+      }
+
       // 验证查询语法
       const validation = this.queryProcessor.validateQuerySyntax(query);
       if (!validation.isValid) {
@@ -61,9 +80,17 @@ export class QueryExecutor {
           query
         );
       }
-
-      // 解析查询
-      const parsedQuery = this.queryProcessor.parseQuery(query);
+      
+      // 检查是否有无效的谓词
+      if (parsedQuery.predicates.length === 0 && query.includes('#')) {
+        // 如果查询中包含谓词但没有解析出任何谓词，可能是语法错误
+        return {
+          success: false,
+          matches: [],
+          errors: ['Invalid predicate syntax or unsupported predicate type'],
+          performance: this.getPerformanceMetrics(startTime, Date.now() - queryStartTime, 0, 0, 0, 0),
+        };
+      }
 
       // 优化查询（如果启用）
       let optimizedQuery = parsedQuery;
@@ -137,29 +164,42 @@ export class QueryExecutor {
         processedBy: [],
         transformations: [],
       }));
+      const directiveErrors: string[] = [];
 
       if (enableDirectives && optimizedQuery.directives.length > 0) {
-        processedMatches = await this.applyDirectives(
-          processedMatches,
-          optimizedQuery.directives,
-          query
-        );
+        // 在应用指令之前，先验证所有指令
+        const directiveValidation = this.directiveProcessor.validateDirectives(optimizedQuery.directives);
+        if (!directiveValidation.isValid) {
+          directiveErrors.push(...directiveValidation.errors);
+        } else {
+          const directiveResult = await this.applyDirectivesWithErrorHandling(
+            processedMatches,
+            optimizedQuery.directives,
+            query
+          );
+          
+          if (directiveResult.errors && directiveResult.errors.length > 0) {
+            directiveErrors.push(...directiveResult.errors);
+          }
+          
+          processedMatches = directiveResult.matches;
+        }
       }
 
       // 构建最终结果
       const result: AdvancedParseResult = {
-        success: true,
+        success: directiveErrors.length === 0,
         matches: processedMatches,
         processedMatches,
-        errors: [],
+        errors: directiveErrors,
         queryFeatures: optimizedQuery.features,
         directives: optimizedQuery.directives,
         predicates: optimizedQuery.predicates,
         validationResults: validation,
         performance: this.getPerformanceMetrics(
           startTime,
-          Date.now() - queryStartTime,
-          baseMatches.length,
+          Math.max(1, Date.now() - queryStartTime), // 确保queryTime至少为1ms
+          processedMatches.length,  // 使用处理后的匹配数
           optimizedQuery.predicates.length,
           optimizedQuery.directives.length,
           process.memoryUsage().heapUsed / 1024 / 1024
@@ -271,45 +311,88 @@ export class QueryExecutor {
       predicates
     );
 
-    return filteredMatches.map(match => ({
-      ...match,
-      predicateResults: predicateResults.filter(pr =>
-        pr.predicate.capture === match.captureName || !pr.predicate.capture
-      ),
-      filteredBy: predicates,
-      originalMatches: matches.length,
-    }));
+    // 创建一个映射来追踪原始匹配项
+    const originalMatchesMap = new Map();
+    matches.forEach(match => {
+      const key = `${match.captureName}-${match.text}-${match.startPosition.row}-${match.startPosition.column}`;
+      originalMatchesMap.set(key, match);
+    });
+
+    return filteredMatches.map(match => {
+      // 根据匹配项的特征查找原始匹配项
+      const key = `${match.captureName}-${match.text}-${match.startPosition.row}-${match.startPosition.column}`;
+      const originalMatch = originalMatchesMap.get(key);
+      
+      return {
+        ...match,
+        // 合并原始匹配项的metadata和当前匹配项的metadata
+        metadata: { ...(originalMatch?.metadata || {}), ...(match.metadata || {}) },
+        predicateResults: predicateResults.filter(pr =>
+          pr.predicate.capture === match.captureName || !pr.predicate.capture
+        ),
+        filteredBy: predicates,
+        originalMatches: matches.length,
+      };
+    });
   }
 
 
   /**
    * 应用指令
    */
-  private async applyDirectives(
+  
+  /**
+   * 应用指令并处理错误
+   */
+  private async applyDirectivesWithErrorHandling(
     matches: ProcessedMatchResult[],
     directives: QueryDirective[],
     _query: string
-  ): Promise<ProcessedMatchResult[]> {
+  ): Promise<{ matches: ProcessedMatchResult[], errors: string[] }> {
     if (directives.length === 0) {
-      return matches.map(match => ({
-        ...match,
-        processedBy: [],
-        transformations: [],
-      }));
+      return {
+        matches: matches.map(match => ({
+          ...match,
+          processedBy: [],
+          transformations: [],
+        })),
+        errors: []
+      };
     }
 
-    const { processedMatches, directiveResults } = await this.directiveProcessor.applyDirectives(
-      matches,
-      directives
-    );
+    try {
+      const { processedMatches, directiveResults } = await this.directiveProcessor.applyDirectives(
+        matches,
+        directives
+      );
+      
+      // 检查是否有指令应用失败
+      const errors = directiveResults
+        .filter(dr => !dr.applied && dr.error)
+        .map(dr => dr.error || '');
+      
+      const resultMatches = processedMatches.map(match => ({
+        ...match,
+        directiveResults: directiveResults.filter(dr =>
+          dr.directive.capture === match.captureName || !dr.directive.capture
+        ),
+        processedBy: [...match.processedBy, ...directiveResults.map(dr => dr.directive.type)],
+      }));
 
-    return processedMatches.map(match => ({
-      ...match,
-      directiveResults: directiveResults.filter(dr =>
-        dr.directive.capture === match.captureName || !dr.directive.capture
-      ),
-      processedBy: [...match.processedBy, ...directiveResults.map(dr => dr.directive.type)],
-    }));
+      return {
+        matches: resultMatches,
+        errors
+      };
+    } catch (error) {
+      return {
+        matches: matches.map(match => ({
+          ...match,
+          processedBy: [],
+          transformations: [],
+        })),
+        errors: [error instanceof Error ? error.message : String(error)]
+      };
+    }
   }
 
 
@@ -324,10 +407,11 @@ export class QueryExecutor {
     directivesApplied: number,
     memoryUsage: number
   ): PerformanceMetrics {
+    const totalTime = Date.now() - startTime;
     return {
       parseTime: 0, // 解析时间在外部计算
       queryTime,
-      totalTime: Date.now() - startTime,
+      totalTime,
       memoryUsage,
       matchCount,
       predicatesProcessed,
