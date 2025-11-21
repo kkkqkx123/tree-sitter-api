@@ -30,11 +30,11 @@ export class QueryProcessor {
   private wildcardRegex: RegExp;
 
   constructor() {
-    // 谓词正则表达式 - 修复以支持复合谓词类型
-    this.predicateRegex = /#(\w+(?:-\w+)*)\?([^)]*)/g;
+    // 谓词正则表达式 - 支持not-eq?, not-match?, any-eq?, any-match?等复合谓词
+    this.predicateRegex = /#([a-z-]+)\?([^)]*)/g;
 
-    // 指令正则表达式 - 修复以支持复合指令类型
-    this.directiveRegex = /#(\w+(?:-\w+)*)!([^)]*)/g;
+    // 指令正则表达式
+    this.directiveRegex = /#([a-z-]+)!([^)]*)/g;
 
     // 锚点正则表达式
     this.anchorRegex = /\./g;
@@ -244,24 +244,33 @@ export class QueryProcessor {
    */
   private parsePredicate(match: RegExpExecArray, query: string): QueryPredicate | null {
     const fullMatch = match[0];
-    const predicateType = match[1] as PredicateType;
+    const predicateTypeStr = match[1];
     const args = match[2];
 
-    // 检查谓词类型是否被允许
-    if (!queryConfig.isPredicateAllowed(predicateType)) {
-      const error = new Error(`Unsupported predicate type: ${predicateType}`);
-      log.warn('QueryProcessor', `Predicate type '${predicateType}' is not allowed`);
-      throw error;
+    if (!predicateTypeStr) {
+      log.warn('QueryProcessor', 'Predicate type is undefined');
+      return null;
     }
 
-    // 解析修饰符 - 从谓词类型中提取
+    // 解析复合谓词类型 (如 not-eq, any-eq 等)
+    let predicateType: PredicateType;
     let negate = false;
     let quantifier: 'any' | 'all' | undefined;
 
-    if (predicateType.startsWith('not-')) {
+    if (predicateTypeStr.startsWith('not-')) {
       negate = true;
-    } else if (predicateType.startsWith('any-')) {
+      predicateType = predicateTypeStr.substring(4) as PredicateType;
+    } else if (predicateTypeStr.startsWith('any-')) {
       quantifier = 'any';
+      predicateType = predicateTypeStr.substring(4) as PredicateType;
+    } else {
+      predicateType = predicateTypeStr as PredicateType;
+    }
+
+    // 检查谓词类型是否被允许
+    if (!queryConfig.isPredicateAllowed(predicateType)) {
+      log.warn('QueryProcessor', `Predicate type '${predicateType}' is not allowed`);
+      return null;
     }
 
     // 解析参数
@@ -338,9 +347,8 @@ export class QueryProcessor {
 
     // 检查指令类型是否被允许
     if (!queryConfig.isDirectiveAllowed(directiveType)) {
-      const error = new Error(`Unsupported directive type: ${directiveType}`);
       log.warn('QueryProcessor', `Directive type '${directiveType}' is not allowed`);
-      throw error;
+      return null;
     }
 
     // 解析参数
@@ -348,16 +356,39 @@ export class QueryProcessor {
     if (args) {
       const trimmedArgs = args.trim();
 
-      // 改进的参数解析 - 正确处理引号和捕获名称
-      const argMatches = trimmedArgs.match(/@(\w+)|"([^"]*)"|'([^']*)'|(\S+)/g);
-      if (argMatches) {
-        for (const argMatch of argMatches) {
-          if (argMatch.startsWith('@')) {
-            parameters.push(argMatch);
-          } else if (argMatch.startsWith('"') || argMatch.startsWith("'")) {
-            parameters.push(argMatch.slice(1, -1));
-          } else {
-            parameters.push(argMatch);
+      // 解析指令参数 - 正确处理set指令的参数
+      if (directiveType === 'set') {
+        // set指令格式: (#set! @capture "key" "value")
+        // 第一个参数是捕获名称，后面是键值对
+        const argMatches = trimmedArgs.match(/@(\w+)|"([^"]*)"|'([^']*)'|(\w+)/g);
+        if (argMatches) {
+          for (let i = 0; i < argMatches.length; i++) {
+            const argMatch = argMatches[i];
+            if (!argMatch) continue;
+            
+            if (argMatch.startsWith('@')) {
+              // 捕获名称，不作为参数
+              continue;
+            } else if (argMatch.startsWith('"') || argMatch.startsWith("'")) {
+              parameters.push(argMatch.slice(1, -1));
+            } else {
+              parameters.push(argMatch);
+            }
+          }
+        }
+      } else {
+        // 其他指令的通用参数解析
+        const argMatches = trimmedArgs.match(/@(\w+)|"([^"]*)"|'([^']*)'|(\w+)/g);
+        if (argMatches) {
+          for (const argMatch of argMatches) {
+            if (argMatch.startsWith('@')) {
+              // 捕获名称，不作为参数
+              continue;
+            } else if (argMatch.startsWith('"') || argMatch.startsWith("'")) {
+              parameters.push(argMatch.slice(1, -1));
+            } else {
+              parameters.push(argMatch);
+            }
           }
         }
       }
@@ -785,7 +816,7 @@ export class QueryProcessor {
   private suggestStructureOptimizations(parsedQuery: ParsedQuery): OptimizationSuggestion[] {
     const suggestions: OptimizationSuggestion[] = [];
 
-    // 检查嵌套量词
+    // 检查嵌套的量词
     const nestedQuantifiers = parsedQuery.originalQuery.match(/([+*?]\s*){2,}/g);
     if (nestedQuantifiers) {
       suggestions.push({

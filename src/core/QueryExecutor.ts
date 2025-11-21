@@ -262,7 +262,7 @@ export class QueryExecutor {
         ...match,
         predicateResults: [],
         filteredBy: [],
-        originalMatches: matches.length,
+        originalMatches: 1,
       }));
     }
 

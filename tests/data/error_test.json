@@ -1,5 +1,5 @@
 {
   "language": "invalid_language",
   "code": "function hello() { console.log('Hello, World!'); }",
-  "query": "(function_declaration) @func"
+  "queries": ["(function_declaration) @func"]
 }
