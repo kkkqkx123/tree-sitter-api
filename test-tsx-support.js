@@ -47,8 +47,6 @@ async function testTsxSupport() {
       console.error('✗ Unexpected root node type:', tree.rootNode.type);
     }
     
-    tree.delete(); // 清理资源
-    parser.delete();
     
   } catch (error) {
     console.error('Error testing TSX support:', error.message);

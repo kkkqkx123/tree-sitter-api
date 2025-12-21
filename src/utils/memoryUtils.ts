@@ -1,30 +1,16 @@
-/**
- * 内存管理工具函数
- */
-
-/**
- * 强制垃圾回收
- */
-export function forceGarbageCollection(): boolean {
-  if (global.gc) {
-    global.gc();
-    return true;
-  }
-  return false;
-}
 
 /**
  * 获取当前内存使用情况
  */
-export function getMemoryUsage() {
+export function getMemoryUsage(): NodeJS.MemoryUsage {
   return process.memoryUsage();
 }
 
 /**
- * 格式化内存大小为可读字符串
+ * 格式化内存大小为可读字符串（带单位）
  */
 export function formatMemorySize(bytes: number): string {
-  const units = ['B', 'KB', 'MB', 'GB'];
+  const units = ['B', 'KB', 'MB', 'GB'] as const;
   let size = bytes;
   let unitIndex = 0;
 
@@ -37,7 +23,7 @@ export function formatMemorySize(bytes: number): string {
 }
 
 /**
- * 记录内存使用情况
+ * 记录内存使用情况到控制台
  */
 export function logMemoryUsage(prefix: string = ''): void {
   const usage = getMemoryUsage();
@@ -45,12 +31,12 @@ export function logMemoryUsage(prefix: string = ''): void {
     `${prefix} Memory - RSS: ${formatMemorySize(usage.rss)}, ` +
       `Heap Total: ${formatMemorySize(usage.heapTotal)}, ` +
       `Heap Used: ${formatMemorySize(usage.heapUsed)}, ` +
-      `External: ${formatMemorySize(usage.external)}`,
+      `External: ${formatMemorySize(usage.external)}`
   );
 }
 
 /**
- * 计算内存使用百分比
+ * 计算堆内存使用百分比
  */
 export function getMemoryUsagePercentage(): number {
   const usage = getMemoryUsage();
@@ -58,16 +44,15 @@ export function getMemoryUsagePercentage(): number {
 }
 
 /**
- * 检查内存是否超过阈值
+ * 检查已用堆内存是否超过指定阈值（以 MB 为单位）
  */
 export function isMemoryOverThreshold(thresholdMB: number): boolean {
-  const usage = getMemoryUsage();
-  const heapUsedMB = usage.heapUsed / 1024 / 1024;
+  const heapUsedMB = getMemoryUsage().heapUsed / 1024 / 1024;
   return heapUsedMB > thresholdMB;
 }
 
 /**
- * 获取内存使用统计
+ * 获取简化的内存使用统计数据（单位：MB，整数）
  */
 export function getMemoryStats() {
   const usage = getMemoryUsage();
@@ -80,101 +65,15 @@ export function getMemoryStats() {
   };
 }
 
-// 注释掉此冗余的MemoryMonitor类，统一使用core/MemoryMonitor
-/*
-export class MemoryMonitor {
-  private measurements: Array<{
-    timestamp: number;
-    usage: NodeJS.MemoryUsage;
-  }> = [];
-  private maxMeasurements: number = 10;
-
-  recordMeasurement(): void {
-    const usage = getMemoryUsage();
-    this.measurements.push({
-      timestamp: Date.now(),
-      usage,
-    });
-
-    // 限制测量记录数量
-    if (this.measurements.length > this.maxMeasurements) {
-      this.measurements.shift();
-    }
-  }
-
-  getMemoryTrend(): 'increasing' | 'decreasing' | 'stable' {
-    if (this.measurements.length < 3) {
-      return 'stable';
-    }
-
-    const recent = this.measurements.slice(-3);
-    const first = recent[0]?.usage.heapUsed ?? 0;
-    const last = recent[recent.length - 1]?.usage.heapUsed ?? 0;
-    const diff = last - first;
-    const threshold = 10 * 1024 * 1024; // 10MB
-
-    if (diff > threshold) {
-      return 'increasing';
-    } else if (diff < -threshold) {
-      return 'decreasing';
-    }
-    return 'stable';
-  }
-
-  getAverageMemoryUsage(): NodeJS.MemoryUsage | null {
-    if (this.measurements.length === 0) {
-      return null;
-    }
-
-    const sum = this.measurements.reduce(
-      (acc, measurement) => ({
-        rss: acc.rss + measurement.usage.rss,
-        heapTotal: acc.heapTotal + measurement.usage.heapTotal,
-        heapUsed: acc.heapUsed + measurement.usage.heapUsed,
-        external: acc.external + measurement.usage.external,
-        arrayBuffers: acc.arrayBuffers + measurement.usage.arrayBuffers,
-      }),
-      { rss: 0, heapTotal: 0, heapUsed: 0, external: 0, arrayBuffers: 0 },
-    );
-
-    const count = this.measurements.length;
-    return {
-      rss: sum.rss / count,
-      heapTotal: sum.heapTotal / count,
-      heapUsed: sum.heapUsed / count,
-      external: sum.external / count,
-      arrayBuffers: sum.arrayBuffers / count,
-    };
-  }
-
-  getPeakMemoryUsage(): NodeJS.MemoryUsage | null {
-    if (this.measurements.length === 0) {
-      return null;
-    }
-
-    return this.measurements.reduce(
-      (max, measurement) => {
-        if (measurement.usage.heapUsed > max.heapUsed) {
-          return measurement.usage;
-        }
-        return max;
-      },
-      this.measurements[0]?.usage ?? {
-        rss: 0,
-        heapTotal: 0,
-        heapUsed: 0,
-        external: 0,
-        arrayBuffers: 0,
-      },
-    );
-  }
-
-  clearMeasurements(): void {
-    this.measurements = [];
-  }
-
-  getMeasurementCount(): number {
-    return this.measurements.length;
+/**
+ * 强制垃圾回收（如果可用）
+ */
+export function forceGarbageCollection(): void {
+  // 检查全局作用域中是否有 gc 函数（需要 Node.js 以 --expose-gc 参数运行）
+  if (typeof global.gc === 'function') {
+    global.gc();
+  } else {
+    // 如果没有暴露 gc 函数，则记录警告
+    console.warn('Garbage collection is not exposed. Run Node.js with --expose-gc flag to enable forceGarbageCollection.');
   }
 }
-*/

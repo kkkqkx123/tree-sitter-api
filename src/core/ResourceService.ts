@@ -201,10 +201,7 @@ export class ResourceService implements IResourceService {
       // 从活跃树集合中移除
       this.activeTrees.delete(tree);
 
-      // 销毁树
-      if (typeof tree.delete === 'function') {
-        tree.delete();
-      }
+      // 销毁树 - 手动内存清理已移除，依赖垃圾回收器自动管理
 
       log.debug('ResourceService', 'Tree destroyed successfully');
     } catch (error) {
@@ -389,10 +386,7 @@ export class ResourceService implements IResourceService {
     try {
       this.parserTimestamps.delete(parser);
 
-      // 尝试调用Tree-sitter的delete方法
-      if (typeof (parser as any).delete === 'function') {
-        (parser as any).delete();
-      }
+      // 手动解析器清理已移除，依赖垃圾回收器自动管理
     } catch (error) {
       log.warn('ResourceService', 'Failed to destroy parser:', error);
     }
@@ -407,10 +401,7 @@ export class ResourceService implements IResourceService {
     // 清理所有活跃资源
     this.cleanup();
 
-    // 强制垃圾回收
-    if (global.gc) {
-      global.gc();
-    }
+    // 手动垃圾回收已移除，依赖Node.js自动垃圾回收
 
     log.warn('ResourceService', 'Emergency cleanup completed');
   }

@@ -400,11 +400,6 @@ export class TreeSitterService implements ITreeSitterService {
                     }
                 }
 
-                // 清理查询对象（如果delete方法存在）
-                if (typeof query.delete === 'function') {
-                    query.delete();
-                }
-
                 return matches;
             }
 

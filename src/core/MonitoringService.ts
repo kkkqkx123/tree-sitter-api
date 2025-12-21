@@ -7,7 +7,7 @@ import {
   CleanupStrategy
 } from '../config/memory';
 import { MemoryStatus, CleanupResult } from '../types/errors';
-import { forceGarbageCollection, getMemoryUsage } from '../utils/memoryUtils';
+import { getMemoryUsage } from '../utils/memoryUtils';
 import { log } from '../utils/Logger';
 
 export interface ServiceStats {
@@ -125,42 +125,26 @@ export class MonitoringService implements IMonitoringService {
     try {
       log.info('MonitoringService', `Performing ${strategy} cleanup...`);
 
-      switch (strategy) {
-        case CleanupStrategy.EMERGENCY:
-          for (let i = 0; i < 3; i++) {
-            forceGarbageCollection();
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
-          break;
-        case CleanupStrategy.AGGRESSIVE:
-          for (let i = 0; i < 2; i++) {
-            forceGarbageCollection();
-            await new Promise(resolve => setTimeout(resolve, 50));
-          }
-          break;
-        case CleanupStrategy.BASIC:
-        default:
-          forceGarbageCollection();
-          await new Promise(resolve => setTimeout(resolve, 50));
-          break;
-      }
+      // Manual garbage collection has been removed to rely on Node.js automatic GC
+      // In production environments, manual GC calls should be avoided
 
       const afterMemory = getMemoryUsage();
-      const freed = Math.round(
+      // Calculate memory change (may be negative if memory increased during operation)
+      const memoryChange = Math.round(
         (beforeMemory.heapUsed - afterMemory.heapUsed) / 1024 / 1024,
       );
       const duration = Date.now() - startTime;
 
       const result: CleanupResult = {
         strategy: strategy,
-        memoryFreed: Math.max(0, freed),
+        memoryFreed: Math.max(0, memoryChange), // Only report positive freed memory
         success: true,
         duration,
       };
 
       log.info(
         'MonitoringService',
-        `${strategy} cleanup completed: ${result.memoryFreed}MB freed in ${result.duration}ms`,
+        `${strategy} cleanup completed: ${result.memoryFreed}MB apparent change in ${result.duration}ms`,
       );
 
       return result;
